@@ -96,7 +96,7 @@ async def cek_tagihan(payload: CekTagihanRequest):
             detail="Parameter no_services, month, dan year wajib diisi!",
         )
 
-    url = f"{MICRONET_API_BASE}/index.php/api/cek_tagihan"
+    url = f"{MICRONET_API_BASE}/front/cek_tagihan"
     form = {
         "no_services": payload.no_services,
         "month": payload.month,
@@ -105,16 +105,34 @@ async def cek_tagihan(payload: CekTagihanRequest):
 
     try:
         async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as http_client:
-            resp = await http_client.post(url, data=form)
+            resp = await http_client.post(
+                url,
+                data=form,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (compatible; MicroNetClient/1.0)",
+                    "Accept": "application/json",
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+            )
     except httpx.RequestError as exc:
         logger.exception("Upstream request error: %s", exc)
         raise HTTPException(status_code=502, detail="Tidak dapat menghubungi server tagihan. Coba lagi nanti.")
 
-    # Try to parse upstream JSON; preserve upstream HTTP status when possible
+    # Try to parse upstream JSON. Upstream may return HTML on some errors (e.g. 404).
     try:
         body = resp.json()
     except Exception:
-        logger.error("Upstream non-JSON response (status=%s): %s", resp.status_code, resp.text[:500])
+        logger.warning(
+            "Upstream non-JSON response (status=%s) for no_services=%s",
+            resp.status_code,
+            payload.no_services,
+        )
+        # Map common non-JSON responses to structured errors the frontend understands.
+        if resp.status_code == 404:
+            return {
+                "status": "error",
+                "message": "No Layanan tidak terdaftar, pastikan no layanan anda benar!",
+            }
         raise HTTPException(status_code=502, detail="Respons server tagihan tidak valid.")
 
     # Forward upstream non-2xx as proper status codes with payload preserved
