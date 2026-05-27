@@ -11,12 +11,12 @@ import CoverageArea from "@/components/CoverageArea";
 import Testimonials from "@/components/Testimonials";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
+import CekTagihan from "@/components/CekTagihan";
 import { Toaster } from "@/components/ui/sonner";
 
 const Home = () => {
   return (
     <div id="home" className="min-h-screen">
-      <Header />
       <Hero />
       <div id="services">
         <Services />
@@ -33,18 +33,26 @@ const Home = () => {
         <Testimonials />
       </div>
       <CTASection />
-      <Footer />
     </div>
   );
 };
+
+const CekTagihanPage = () => (
+  <>
+    <CekTagihan />
+  </>
+);
 
 function App() {
   return (
     <div className="App">
       <BrowserRouter>
+        <Header />
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/cek-tagihan" element={<CekTagihanPage />} />
         </Routes>
+        <Footer />
       </BrowserRouter>
       <Toaster />
     </div>
