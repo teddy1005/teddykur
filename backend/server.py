@@ -1,12 +1,13 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import httpx
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional, Any
 import uuid
 from datetime import datetime, timezone
 
@@ -65,6 +66,63 @@ async def get_status_checks():
             check['timestamp'] = datetime.fromisoformat(check['timestamp'])
     
     return status_checks
+
+
+# ---------------- Cek Tagihan Proxy ----------------
+class CekTagihanRequest(BaseModel):
+    no_services: str
+    month: str
+    year: str
+
+
+class CekTagihanResponse(BaseModel):
+    status: str
+    message: Optional[str] = None
+    data: Optional[Any] = None
+
+
+MICRONET_API_BASE = os.environ.get('MICRONET_API_BASE', 'https://micronet.web.id')
+
+
+@api_router.post("/cek-tagihan", response_model=CekTagihanResponse)
+async def cek_tagihan(payload: CekTagihanRequest):
+    """Proxy to Micro NET upstream API: /index.php/api/cek_tagihan.
+
+    Avoids browser CORS issues and keeps the upstream URL configurable.
+    """
+    if not payload.no_services or not payload.month or not payload.year:
+        raise HTTPException(
+            status_code=400,
+            detail="Parameter no_services, month, dan year wajib diisi!",
+        )
+
+    url = f"{MICRONET_API_BASE}/index.php/api/cek_tagihan"
+    form = {
+        "no_services": payload.no_services,
+        "month": payload.month,
+        "year": payload.year,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as http_client:
+            resp = await http_client.post(url, data=form)
+    except httpx.RequestError as exc:
+        logger.exception("Upstream request error: %s", exc)
+        raise HTTPException(status_code=502, detail="Tidak dapat menghubungi server tagihan. Coba lagi nanti.")
+
+    # Try to parse upstream JSON; preserve upstream HTTP status when possible
+    try:
+        body = resp.json()
+    except Exception:
+        logger.error("Upstream non-JSON response (status=%s): %s", resp.status_code, resp.text[:500])
+        raise HTTPException(status_code=502, detail="Respons server tagihan tidak valid.")
+
+    # Forward upstream non-2xx as proper status codes with payload preserved
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=resp.status_code, detail=body)
+
+    return body
+
 
 # Include the router in the main app
 app.include_router(api_router)
