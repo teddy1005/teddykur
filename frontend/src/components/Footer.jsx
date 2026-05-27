@@ -14,8 +14,8 @@ const Footer = () => {
     ],
     support: [
       { label: 'Cek Tagihan', href: '/cek-tagihan', type: 'route' },
+      { label: 'Speed Test', href: '/speedtest', type: 'route' },
       { label: 'Client Area', href: 'https://micronet.web.id/auth', type: 'external' },
-      { label: 'Status Jaringan', href: '#', type: 'link' },
       { label: 'FAQ', href: '#', type: 'link' }
     ],
     company: [

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from './ui/button';
-import { Menu, X, Phone, UserCircle, Receipt } from 'lucide-react';
+import { Menu, X, Phone, UserCircle, Receipt, Gauge } from 'lucide-react';
 import { companyInfo } from '../mockData';
 
 const Header = () => {
@@ -61,6 +61,11 @@ const Header = () => {
     setIsMobileMenuOpen(false);
   };
 
+  const handleSpeedTestClick = () => {
+    navigate('/speedtest');
+    setIsMobileMenuOpen(false);
+  };
+
   const handleWhatsAppClick = () => {
     window.open(
       `https://wa.me/${companyInfo.whatsapp}?text=Halo%20Micro%20NET%2C%20saya%20ingin%20informasi%20tentang%20layanan%20internet`,
@@ -117,6 +122,15 @@ const Header = () => {
               data-testid="nav-cek-tagihan"
             >
               Cek Tagihan
+            </button>
+            <button
+              onClick={handleSpeedTestClick}
+              className={`font-semibold transition-colors duration-300 hover:text-cyan-600 ${
+                showSolidHeader ? 'text-slate-900' : 'text-white'
+              }`}
+              data-testid="nav-speedtest"
+            >
+              Speed Test
             </button>
           </nav>
 
@@ -182,6 +196,14 @@ const Header = () => {
               >
                 <Receipt className="w-4 h-4" />
                 Cek Tagihan
+              </button>
+              <button
+                onClick={handleSpeedTestClick}
+                className="text-slate-900 font-semibold py-2 hover:text-cyan-600 transition-colors text-left flex items-center gap-2"
+                data-testid="mobile-nav-speedtest"
+              >
+                <Gauge className="w-4 h-4" />
+                Speed Test
               </button>
               <Button
                 variant="outline"

@@ -6,12 +6,13 @@ import Hero from "@/components/Hero";
 import Packages from "@/components/Packages";
 import Services from "@/components/Services";
 import WhyChooseUs from "@/components/WhyChooseUs";
-import SpeedTest from "@/components/SpeedTest";
+import SpeedTestCTA from "@/components/SpeedTestCTA";
 import CoverageArea from "@/components/CoverageArea";
 import Testimonials from "@/components/Testimonials";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
 import CekTagihan from "@/components/CekTagihan";
+import SpeedTestPage from "@/components/SpeedTestPage";
 import { Toaster } from "@/components/ui/sonner";
 
 const Home = () => {
@@ -25,7 +26,7 @@ const Home = () => {
       <div id="packages">
         <Packages />
       </div>
-      <SpeedTest />
+      <SpeedTestCTA />
       <div id="coverage">
         <CoverageArea />
       </div>
@@ -37,12 +38,6 @@ const Home = () => {
   );
 };
 
-const CekTagihanPage = () => (
-  <>
-    <CekTagihan />
-  </>
-);
-
 function App() {
   return (
     <div className="App">
@@ -50,7 +45,8 @@ function App() {
         <Header />
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/cek-tagihan" element={<CekTagihanPage />} />
+          <Route path="/cek-tagihan" element={<CekTagihan />} />
+          <Route path="/speedtest" element={<SpeedTestPage />} />
         </Routes>
         <Footer />
       </BrowserRouter>

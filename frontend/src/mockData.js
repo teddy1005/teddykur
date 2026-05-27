@@ -4,8 +4,8 @@ export const packages = [
   {
     id: 1,
     name: "Home Basic",
-    speed: "20 Mbps",
-    price: "200.000",
+    speed: "Up to 20 Mbps",
+    price: "150.000",
     type: "residential",
     features: [
       "Unlimited Quota",
@@ -19,15 +19,15 @@ export const packages = [
   {
     id: 2,
     name: "Home Premium",
-    speed: "50 Mbps",
-    price: "350.000",
+    speed: "Up to 50 Mbps",
+    price: "165.000",
     type: "residential",
     features: [
       "Unlimited Quota",
       "Gratis Instalasi",
       "Priority Support 24/7",
       "Ideal untuk Gaming & 4K Streaming",
-      "Free Modem Router WiFi 6",
+      "Free Modem Router Dual band",
       "Anti Lag Technology"
     ],
     popular: true
@@ -35,30 +35,28 @@ export const packages = [
   {
     id: 3,
     name: "Home Ultra",
-    speed: "100 Mbps",
-    price: "500.000",
+    speed: "Up to 70 Mbps",
+    price: "220.000",
     type: "residential",
     features: [
       "Unlimited Quota",
       "Gratis Instalasi",
       "Priority Support 24/7",
       "Perfect untuk Keluarga Besar",
-      "Free Modem Router WiFi 6",
-      "Anti Lag Technology",
-      "Free 1 Bulan Pertama"
+      "Free Modem Router Dual band",
+      "Anti Lag Technology"
     ],
     popular: false
   },
   {
     id: 4,
     name: "Business Start",
-    speed: "30 Mbps",
-    price: "450.000",
+    speed: "Up to 100 Mbps",
+    price: "350.000",
     type: "business",
     features: [
       "Unlimited Quota",
-      "Static IP Public",
-      "SLA 99.5%",
+      "SLA 97%",
       "Priority Support",
       "Free Installation",
       "Cocok untuk UMKM"
@@ -68,13 +66,12 @@ export const packages = [
   {
     id: 5,
     name: "Business Pro",
-    speed: "100 Mbps",
-    price: "1.200.000",
+    speed: "Up to 200 Mbps",
+    price: "600.000",
     type: "business",
     features: [
       "Unlimited Quota",
-      "Static IP Public",
-      "SLA 99.9%",
+      "SLA 97%",
       "Dedicated Support 24/7",
       "Free Installation",
       "Ideal untuk Kantor & Retail",
@@ -85,16 +82,14 @@ export const packages = [
   {
     id: 6,
     name: "Enterprise",
-    speed: "Up to 1 Gbps",
+    speed: "Up to 300 Mbps",
     price: "Custom",
     type: "business",
     features: [
       "Unlimited Quota",
-      "Multiple Static IP",
-      "SLA 99.95%",
-      "Dedicated Account Manager",
+      "SLA 97%",
       "Custom Installation",
-      "Untuk Kawasan Industri/KITB",
+      "Untuk Kawasan Industri",
       "Redundant Connection",
       "Network Monitoring"
     ],
@@ -133,14 +128,14 @@ export const testimonials = [
   {
     id: 1,
     name: "Budi Santoso",
-    role: "Pelanggan Rumahan - Batang Kota",
+    role: "Pelanggan Rumahan - Gringsing",
     content: "Internet Micro NET sangat stabil, cocok banget buat kerja WFH dan anak-anak sekolah online. Support juga cepat tanggap!",
     rating: 5,
     avatar: "BS"
   },
   {
     id: 2,
-    name: "PT. Maju Jaya Industri",
+    name: "PT. Green Wood Perkasa Energy",
     role: "Kawasan Industri KITB",
     content: "Sejak pakai Micro NET untuk jaringan kantor, produktivitas meningkat drastis. Koneksi stabil dan SLA terjamin.",
     rating: 5,
@@ -165,14 +160,8 @@ export const testimonials = [
 ];
 
 export const coverageAreas = [
-  "Batang Kota",
-  "Warungasem",
-  "Tulis",
-  "Subah",
   "Gringsing",
   "Limpung",
-  "Kandeman",
-  "Bandar",
   "Kawasan Industri KITB",
   "Dan area lainnya"
 ];
@@ -219,10 +208,10 @@ export const whyChooseUs = [
 export const companyInfo = {
   name: "Micro NET",
   tagline: "Internet Cepat, Stabil, Terpercaya untuk Batang",
-  phone: "0285-4000-XXX",
-  whatsapp: "6281234567890",
-  email: "info@micronet.web.id",
-  address: "Kabupaten Batang, Jawa Tengah",
+  phone: "082136019744",
+  whatsapp: "6282136019744",
+  email: "micromultimediagrup@gmail.com",
+  address: "RT.05 Desa Surodadi Kec. Gringsing, Kabupaten Batang, Jawa Tengah",
   website: "micronet.web.id",
   logoVertical: "https://micronet.web.id/assets/images/Logo_Vertical_White.png",
   logoHorizontal: "https://micronet.web.id/assets/images/Logo_Horizontal_White.png",
