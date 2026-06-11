@@ -1,0 +1,90 @@
+{
+  "project_name": "Micro Multimedia Grup Landing Page",
+  "domain": "CCTV Installation & Security Services",
+  "archetype": "Archetype 2: Performance Pro (Customized for Corporate Security)",
+  "theme": "Dark Theme",
+  "typography": {
+    "heading_font": "Outfit",
+    "body_font": "Inter",
+    "notes": "Outfit for strong, clean, modern headings. Inter for highly legible body copy and data entry. Follow tracking-tight for large headings."
+  },
+  "colors": {
+    "background_primary": "#1A1A1A",
+    "background_secondary": "#242424",
+    "background_card": "#2A2A2A",
+    "brand_primary": "#0F4C81",
+    "brand_accent_cta": "#FF6B35",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "rgba(255, 255, 255, 0.7)",
+    "border_color": "rgba(255, 255, 255, 0.1)"
+  },
+  "layout_spacing": {
+    "container_padding": "px-6 md:px-12 lg:px-24",
+    "section_gap": "py-24 md:py-32",
+    "border_radius": "rounded-xl",
+    "grid_gap": "gap-6 md:gap-8"
+  },
+  "motion_guidelines": {
+    "hover_state": "Slight lift (-translate-y-1) and enhanced border glow or shadow.",
+    "entrance": "Fade up with framer-motion (y: 20, opacity: 0 -> y: 0, opacity: 1) staggered for grid items.",
+    "interactive": "Buttons scale down slightly on tap (scale: 0.98)."
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#FF6B35] text-white hover:bg-[#E55A2A] font-semibold rounded-lg px-6 py-3 transition-colors",
+      "secondary": "bg-[#0F4C81] text-white hover:bg-[#0D3F6A] font-semibold rounded-lg px-6 py-3 transition-colors"
+    },
+    "cards": "bg-[#242424] border border-white/10 rounded-xl p-8 hover:border-[#0F4C81]/50 transition-colors",
+    "forms": "Use Shadcn Input/Select with dark mode overrides (bg-[#1A1A1A] border-white/20 text-white placeholder:text-white/40). Focus state MUST have ring-[#FF6B35]."
+  },
+  "sections": [
+    {
+      "name": "Navigation",
+      "guidelines": "Sticky glassmorphism header (backdrop-blur-xl bg-[#1A1A1A]/80). Links: Home, Services & Pricing, Survey Guide, Portfolio, Contact Us. No login/register buttons."
+    },
+    {
+      "name": "Hero Section",
+      "guidelines": "High impact. Left text, right image (or subtle background blend). Title: 'Solusi Keamanan CCTV Profesional untuk Rumah, Ruko & Korporat'. Subtitle regarding neat installation and local free transport. Two CTAs side-by-side using the primary/secondary button styles."
+    },
+    {
+      "name": "The Twin Pillars (Services)",
+      "guidelines": "Two large bento-style cards. 1. Paket Terima Beres (Full Package). 2. Jasa Pasang Saja (Installation Only). Use distinct icons (e.g., Package/Box for full, Wrench for install). Dark card backgrounds with subtle #0F4C81 glowing border on hover."
+    },
+    {
+      "name": "Quality & Craftsmanship (Before/After)",
+      "guidelines": "Split visual section. Left: Messy wiring / Vendor Asal Pasang (Use messy network wires image). Right: Neat conduit installation / Micro Multimedia Standard (Use clean server room image). Apply a red tint overlay to messy, blue/green to clean."
+    },
+    {
+      "name": "Distance & Logistics",
+      "guidelines": "Information section mapping out local (Free Transport) vs long-distance (Min 8 cameras, Rp250k/point, flat regional fee). Use map/location icons."
+    },
+    {
+      "name": "Survey Method",
+      "guidelines": "Two options grid. Option A: Virtual Survey (WhatsApp, Free). Option B: On-Site Survey (Rp500k deposit, refunded on deal). Clear, transparent trust-building layout."
+    },
+    {
+      "name": "Digital Survey Leads Form",
+      "guidelines": "Lead generation form. Inputs: Name, Location, Camera Count, Building Type (Dropdown), Ceiling Condition (Dropdown). Submit CTA: 'Dapatkan Estimasi Biaya via WhatsApp' in Accent Orange. Include data-testid attributes."
+    },
+    {
+      "name": "Portfolio Grid",
+      "guidelines": "Masonry or 3-column grid showing Residential, Retail/Ruko, and Corporate/Warehouse projects using provided images."
+    }
+  ],
+  "media": {
+    "hero_image": "https://images.unsplash.com/photo-1589935447067-5531094415d1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBjY3R2JTIwY2FtZXJhJTIwc2VjdXJpdHl8ZW58MHx8fHwxNzgxMTk0MTY1fDA&ixlib=rb-4.1.0&q=85",
+    "messy_wiring_before": "https://images.unsplash.com/photo-1691435828932-911a7801adfb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODl8MHwxfHNlYXJjaHwxfHxjbGVhbiUyMHNlcnZlciUyMHJvb20lMjB3aXJpbmd8ZW58MHx8fHwxNzgxMTk0MTY1fDA&ixlib=rb-4.1.0&q=85",
+    "clean_wiring_after": "https://images.unsplash.com/photo-1680992046626-418f7e910589?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODl8MHwxfHNlYXJjaHwyfHxjbGVhbiUyMHNlcnZlciUyMHJvb20lMjB3aXJpbmd8ZW58MHx8fHwxNzgxMTk0MTY1fDA&ixlib=rb-4.1.0&q=85",
+    "portfolio_residential": "https://images.unsplash.com/photo-1558002038-1055907df827?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwxfHxzbWFydCUyMGhvbWUlMjBpbnRlcmlvciUyMHNlY3VyaXR5fGVufDB8fHx8MTc4MTE5NDE2NXww&ixlib=rb-4.1.0&q=85",
+    "portfolio_warehouse": "https://images.unsplash.com/photo-1726866672851-5b99c837603c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTZ8MHwxfHNlYXJjaHwxfHx3YXJlaG91c2UlMjBmYWNpbGl0eSUyMGxvZ2lzdGljc3xlbnwwfHx8fDE3ODExOTQxNjV8MA&ixlib=rb-4.1.0&q=85",
+    "portfolio_retail": "https://images.unsplash.com/photo-1519558260268-cde7e03a0152?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwyfHxzbWFydCUyMGhvbWUlMjBpbnRlcmlvciUyMHNlY3VyaXR5fGVufDB8fHx8MTc4MTE5NDE2NXww&ixlib=rb-4.1.0&q=85"
+  },
+  "icons": "lucide-react",
+  "instructions_to_main_agent": [
+    "Strictly adhere to the dark theme palette (#1A1A1A base, #0F4C81 primary, #FF6B35 CTA).",
+    "Do not include authentication buttons.",
+    "Ensure all buttons, inputs, and major links have 'data-testid' attributes.",
+    "Form submit should simulate redirecting to WhatsApp. Phone number is 6282136019744.",
+    "Use framer-motion for scroll-triggered entrance animations."
+  ]
+}
