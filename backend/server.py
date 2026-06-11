@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -13,12 +13,24 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
 
+from sample_boq import build_sample_boq
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 UPLOAD_DIR = ROOT_DIR / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+STATIC_DIR = ROOT_DIR / "static"
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
+
+SAMPLE_BOQ_PATH = STATIC_DIR / "sample-boq-blueprint.pdf"
+try:
+    if not SAMPLE_BOQ_PATH.exists():
+        build_sample_boq(SAMPLE_BOQ_PATH)
+except Exception as e:
+    logging.getLogger(__name__).warning("Sample BoQ generation failed: %s", e)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -144,6 +156,20 @@ async def create_lead(
 async def list_leads(limit: int = 100):
     leads = await db.survey_leads.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
     return leads
+
+
+@api_router.get("/sample-boq.pdf")
+async def get_sample_boq():
+    if not SAMPLE_BOQ_PATH.exists():
+        try:
+            build_sample_boq(SAMPLE_BOQ_PATH)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Sample BoQ unavailable: {e}")
+    return FileResponse(
+        path=str(SAMPLE_BOQ_PATH),
+        media_type="application/pdf",
+        filename="MMG-Sample-BoQ-Blueprint.pdf",
+    )
 
 
 # Mount uploads directory under /api so it goes through ingress

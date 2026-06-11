@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Video, FileText, BadgeCheck, AlertCircle, ArrowRight } from "lucide-react";
+import BoQPreview from "@/components/site/BoQPreview";
 
 const SurveyMethod = () => {
   return (
@@ -120,6 +121,8 @@ const SurveyMethod = () => {
               <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
               Blueprint PDF tetap milik Anda walau tidak jadi closing.
             </div>
+
+            <BoQPreview />
           </motion.div>
         </div>
 
