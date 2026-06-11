@@ -93,7 +93,7 @@ async def create_lead(
     phone: Optional[str] = Form(None),
     service_type: Optional[str] = Form("paket_lengkap"),
     notes: Optional[str] = Form(None),
-    files: Optional[List[UploadFile]] = File(None),
+    files: List[UploadFile] = File(default=[]),
 ):
     if camera_count < 1:
         raise HTTPException(status_code=400, detail="Jumlah kamera minimal 1.")
