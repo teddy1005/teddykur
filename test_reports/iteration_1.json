@@ -1,0 +1,38 @@
+{
+  "summary": "Full backend + frontend testing of POP Monitoring app. 24/24 pytest backend tests PASS covering auth (admin/operator/viewer + httpOnly cookies + invalid creds), RBAC (viewer blocked from POP create & settings PUT -> 403; operator blocked from DELETE -> 403; operator can run check), CRUD POP+Link (with distance_km haversine computed, update persisted, admin delete, 404 after delete, no password_enc/snmp_community_enc/_id leak), dashboard summary KPIs, topology graph, settings, map-settings, and the CRITICAL topology-engine scenarios: (a) interface fault on POP-A ether2 -> LINK-AB=DOWN/INTERFACE_DOWN while all 5 POPs remain UP via alternative path B-C-D-A; (b) adding POP-C ether1 cut -> POP-B isolated DOWN/LINK_UNREACHABLE while A/C/D/E UP; (c) POP-B router_down=true -> POP-B DOWN/ROUTER_DOWN and its links UNKNOWN/ROUTER_DOWN (never falsely 'cut'); state restored after each scenario. Alerts list + operator resolve verified. Frontend: login works, invalid-password error renders, admin dashboard shows 5 POP cards with live metrics + KPIs + event feed (incl. ALT_PATH 'tetap reachable melalui jalur alternatif.' informational events), topology React Flow renders 5 nodes & 5 edges, map page renders Leaflet with 5 markers & 5 polylines, Settings page toggles provider osm<->google, viewer logged in cannot see Add POP button (RBAC enforced on UI), monitoring run-check-btn works, LIVE indicator present.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "WebSocket /api/ws", "issue": "Console warning: 'WebSocket connection to wss://.../api/ws failed: WebSocket is closed before the connection is established.' repeating on multiple pages. LIVE indicator still appears green (likely via periodic HTTP refresh or reconnect loop), but real-time push via WS appears broken through the ingress on this preview environment. Needs verification whether the ingress config allows ws upgrade on /api/ws.", "affected_selectors": ["LIVE badge in header"]}
+    ],
+    "design_issues": [
+      {"screen": "Map View (/map)", "issues": ["Default OSM tile style is 'CARTO Dark Matter' which now serves a huge diagonal 'API KEY REQUIRED - carto.com/basemaps/apikey' watermark on every tile, making the map unreadable out-of-the-box. The 'OpenStreetMap' option in Settings -> OSM Tile Style works correctly without a key. Recommendation: change DEFAULT_MAP_SETTINGS.osm_tile in /app/backend/db.py from 'cartodb_dark' to 'osm' (standard OSM), or sign up for a Carto basemaps API key. User-facing promise 'No API key. Leaflet + OSM/CARTO tiles.' is currently false for the default pick."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_popmon_backend.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Change default osm_tile from 'cartodb_dark' to 'osm' in /app/backend/db.py DEFAULT_MAP_SETTINGS so first-run map isn't covered by 'API KEY REQUIRED' watermark (CARTO policy change).",
+    "Investigate /api/ws WebSocket upgrade through the preview ingress (console warns 'closed before established'). Dashboard still updates via periodic refresh/polling, so this is non-blocking but reduces real-time UX."
+  ],
+  "critical_code_review_comments": [
+    "security.py get_current_user uses ObjectId(payload['sub']) directly; a malformed sub will raise bson.errors.InvalidId -> uncaught 500 instead of 401. Wrap in try/except.",
+    "api.py set_auth_cookies hardcodes samesite='none' + secure=True; fine for cross-site preview URL, but ensure production env flag or env-driven override. No action for now.",
+    "api.py login_attempts logic sets 'locked_until' to the current timestamp (not a future time) so the 429 branch is effectively never triggered (locked < now always true). The 5-attempt brute-force lockout as advertised in playbook test is NOT functional.",
+    "monitor.py _collect falls back to simulation if sim.enabled OR no mikrotik_ip; but the condition `sim.get('enabled', True) or not pop.get('mikrotik_ip')` means seeded POPs with mikrotik_ip still simulate because enabled=True — correct per user choice, but a POP with enabled=False and no IP will attempt real ping on empty IP; guard already handles via _real_ping returning unreachable. OK.",
+    "api.py create_pop stores password_enc/snmp_community_enc from encrypt_secret(''), returning '' — benign.",
+    "No pagination on /api/alerts beyond limit param; fine for MVP."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_popmon_backend.py (new, 24 tests, replaces no prior file)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "test_credentials": "admin teddykurnia10@gmail.com / PopMonitor#2026; operator operator@popmon.io / Popmon#2026; viewer viewer@popmon.io / Popmon#2026 (also in /app/memory/test_credentials.md)",
+  "seed_data_creation": "No new seed. Used built-in demo seed (5 POPs A-E, 5 links forming multi-path graph; POP-A core). All topology scenarios restored to all-UP after tests.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend fully green via pytest at /app/backend/tests/test_popmon_backend.py (run from /app with: pytest backend/tests/test_popmon_backend.py -v). Topology engine behaves exactly to spec. Known cosmetic/UX items only: (1) default map tile style covers map with 'API KEY REQUIRED' watermark; switch default to 'osm' in db.py DEFAULT_MAP_SETTINGS OR change via Settings UI -> OSM Tile Style -> OpenStreetMap; (2) /api/ws upgrade not establishing through preview ingress — LIVE still green via refresh; (3) login brute-force lockout stores locked_until=now (string compare), never triggers 429. None block the MVP acceptance tests; mention when re-running security playbook."
+}

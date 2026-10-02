@@ -24,7 +24,7 @@ DEFAULT_SETTINGS = {
 DEFAULT_MAP_SETTINGS = {
     "_id": "global",
     "provider": "osm",
-    "osm_tile": "cartodb_dark",
+    "osm_tile": "osm_standard",
     "center_lat": -6.2088,
     "center_lng": 106.8456,
     "zoom": 12,

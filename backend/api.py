@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from math import radians, sin, cos, asin, sqrt
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
@@ -89,17 +89,19 @@ async def register(body: RegisterBody, response: Response, admin=Depends(require
 async def login(body: LoginBody, request: Request, response: Response):
     email = body.email.lower()
     ident = f"{request.client.host if request.client else 'x'}:{email}"
+    now = datetime.now(timezone.utc)
     attempt = await db.login_attempts.find_one({"identifier": ident})
     if attempt and attempt.get("count", 0) >= 5:
         locked = attempt.get("locked_until")
-        if locked and datetime.now(timezone.utc).isoformat() < locked:
+        if locked and now < datetime.fromisoformat(locked):
             raise HTTPException(status_code=429, detail="Too many attempts. Try again later.")
     user = await db.users.find_one({"email": email})
     if not user or not verify_password(body.password, user["password_hash"]):
+        new_count = (attempt.get("count", 0) if attempt else 0) + 1
         await db.login_attempts.update_one(
             {"identifier": ident},
-            {"$inc": {"count": 1},
-             "$set": {"locked_until": (datetime.now(timezone.utc).replace(microsecond=0)).isoformat()}},
+            {"$set": {"count": new_count,
+                      "locked_until": (now + timedelta(minutes=15)).isoformat() if new_count >= 5 else None}},
             upsert=True,
         )
         raise HTTPException(status_code=401, detail="Invalid email or password")
