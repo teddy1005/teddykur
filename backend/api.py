@@ -429,7 +429,7 @@ async def read_map_settings(user=Depends(get_current_user)):
 
 @router.put("/map-settings")
 async def write_map_settings(body: dict, user=Depends(require_role("admin"))):
-    allowed = {"provider", "osm_tile", "center_lat", "center_lng", "zoom"}
+    allowed = {"provider", "osm_tile", "google_style", "center_lat", "center_lng", "zoom"}
     update = {k: v for k, v in body.items() if k in allowed}
     if body.get("google_api_key"):
         update["google_api_key"] = body["google_api_key"]
@@ -507,26 +507,26 @@ async def test_connection(pop_id: str, user=Depends(require_role("admin", "opera
     target = p.get("gateway_ip") or p.get("mikrotik_ip")
     if not target:
         return {"ok": False, "reachable": False, "method": method, "message": "No IP configured"}
-    ping = await _real_ping(target, settings["timeout"], settings["retry"])
+    to = max(settings["timeout"], 6)
+    ping = await _real_ping(target, to, settings["retry"])
     res = {"reachable": ping["reachable"], "latency": ping.get("latency"), "method": method, "ok": False}
-    if not ping["reachable"]:
-        res["message"] = "Host not reachable (ICMP). Ensure the device is public-facing and reachable."
-        return res
     if method == "rest":
         try:
-            data = await asyncio.to_thread(_collect_rest, p, settings["timeout"])
+            data = await asyncio.to_thread(_collect_rest, p, to)
             r = data["resource"]
-            res.update({"ok": True, "identity": (data.get("identity") or {}).get("name"),
+            res.update({"ok": True, "reachable": True, "identity": (data.get("identity") or {}).get("name"),
                         "version": r.get("version"), "board": r.get("board-name"),
                         "cpu": r.get("cpu-load"), "uptime": parse_uptime(r.get("uptime"))})
         except Exception as e:
             res["message"] = f"REST error: {e}"
     elif method == "snmp":
         try:
-            desc = await asyncio.to_thread(_snmp_sysdescr, p, settings["timeout"])
-            res.update({"ok": True, "identity": desc[:120]})
+            desc = await asyncio.to_thread(_snmp_sysdescr, p, to)
+            res.update({"ok": True, "reachable": True, "identity": desc[:120]})
         except Exception as e:
             res["message"] = f"SNMP error: {e}"
+    if not res["ok"] and not res.get("message"):
+        res["message"] = "Host not reachable. Check IP/port, firewall, and that the REST/SNMP service is enabled on the device."
     return res
 
 

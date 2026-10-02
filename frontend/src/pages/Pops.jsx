@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from "recharts";
-import { MoreVertical, Trash2, Activity, Zap, ZapOff, Eye, Pencil, Wifi, Loader2 } from "lucide-react";
+import { MoreVertical, Trash2, Activity, Zap, ZapOff, Eye, Pencil, Wifi, Loader2, Plus } from "lucide-react";
 
 export default function Pops() {
   const { user } = useAuth();
@@ -30,18 +30,58 @@ export default function Pops() {
   const openEdit = (p) => {
     setTestResult(null);
     setEditForm({
-      id: p.id, name: p.name, code: p.code, mikrotik_ip: p.mikrotik_ip || "", gateway_ip: p.gateway_ip || "",
+      id: p.id, isNew: false, name: p.name, code: p.code,
+      latitude: p.latitude ?? "", longitude: p.longitude ?? "",
+      mikrotik_ip: p.mikrotik_ip || "", gateway_ip: p.gateway_ip || "",
       access_method: p.access_method || "rest", api_port: p.api_port || 443, username: p.username || "",
       password: "", snmp_community: "", simulation_enabled: p.simulation?.enabled ?? true,
       is_core: p.is_core || false, interfaces: (p.interfaces || []).map((i) => i.name).join(","),
     });
   };
 
-  const buildBody = (f) => ({ ...f, api_port: Number(f.api_port), interfaces: f.interfaces.split(",").map((s) => s.trim()).filter(Boolean) });
+  const openCreate = () => {
+    setTestResult(null);
+    setEditForm({
+      isNew: true, name: "", code: "", latitude: "", longitude: "", address: "",
+      mikrotik_ip: "", gateway_ip: "", access_method: "rest", api_port: 443, username: "",
+      password: "", snmp_community: "", simulation_enabled: true, is_core: false, interfaces: "ether1,ether2",
+    });
+  };
+
+  const buildBody = (f) => {
+    const b = {
+      name: f.name, code: f.code, address: f.address || "", mikrotik_ip: f.mikrotik_ip,
+      gateway_ip: f.gateway_ip, access_method: f.access_method, api_port: Number(f.api_port),
+      username: f.username, password: f.password, snmp_community: f.snmp_community,
+      is_core: f.is_core, simulation_enabled: f.simulation_enabled,
+      interfaces: f.interfaces.split(",").map((s) => s.trim()).filter(Boolean),
+    };
+    const la = parseFloat(f.latitude), lo = parseFloat(f.longitude);
+    if (!isNaN(la)) b.latitude = la;
+    if (!isNaN(lo)) b.longitude = lo;
+    return b;
+  };
 
   const saveEdit = async () => {
+    const body = buildBody(editForm);
+    if (editForm.isNew) {
+      if (body.latitude == null || body.longitude == null) {
+        toast.error("Latitude & longitude are required");
+        return;
+      }
+      try {
+        await api.post("/pops", body);
+        toast.success("POP created");
+        setEditForm(null);
+        qc.invalidateQueries({ queryKey: ["pops"] });
+        qc.invalidateQueries({ queryKey: ["topology"] });
+      } catch (e) {
+        toast.error(e.response?.data?.detail || "Failed");
+      }
+      return;
+    }
     try {
-      await api.put(`/pops/${editForm.id}`, buildBody(editForm));
+      await api.put(`/pops/${editForm.id}`, body);
       toast.success("POP updated");
       setEditForm(null);
       qc.invalidateQueries({ queryKey: ["pops"] });
@@ -83,9 +123,12 @@ export default function Pops() {
 
   return (
     <div>
-      <div className="px-6 py-5 border-b border-slate-800">
-        <h1 className="font-heading font-black text-3xl tracking-tight">POP Management</h1>
-        <p className="text-slate-500 text-sm">{pops?.length || 0} points of presence · inject demo faults to see the engine react</p>
+      <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="font-heading font-black text-2xl sm:text-3xl tracking-tight">POP Management</h1>
+          <p className="text-slate-500 text-sm">{pops?.length || 0} points of presence · inject demo faults to see the engine react</p>
+        </div>
+        {canEdit && <Button data-testid="add-pop-btn" onClick={openCreate} className="bg-blue-600 hover:bg-blue-500 rounded-sm"><Plus className="h-4 w-4 mr-1" /> Add POP</Button>}
       </div>
       <div className="p-6">
         <div className="rounded-sm border border-slate-800 overflow-x-auto">
@@ -156,12 +199,14 @@ export default function Pops() {
 
       <Dialog open={!!editForm} onOpenChange={(o) => !o && setEditForm(null)}>
         <DialogContent className="bg-[#0b1120] border-slate-700 text-slate-100 max-w-2xl">
-          <DialogHeader><DialogTitle className="font-heading flex items-center gap-2"><Wifi className="h-4 w-4" /> {editForm?.name} — Configuration</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-heading flex items-center gap-2"><Wifi className="h-4 w-4" /> {editForm?.isNew ? "New POP" : `${editForm?.name} — Configuration`}</DialogTitle></DialogHeader>
           {editForm && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <EF label="Name"><Input data-testid="edit-name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="bg-slate-900 border-slate-700" /></EF>
                 <EF label="Code"><Input value={editForm.code} onChange={(e) => setEditForm({ ...editForm, code: e.target.value })} className="bg-slate-900 border-slate-700" /></EF>
+                <EF label="Latitude"><Input data-testid="edit-lat" value={editForm.latitude} onChange={(e) => setEditForm({ ...editForm, latitude: e.target.value })} placeholder="-6.2088" className="bg-slate-900 border-slate-700 font-mono" /></EF>
+                <EF label="Longitude"><Input data-testid="edit-lng" value={editForm.longitude} onChange={(e) => setEditForm({ ...editForm, longitude: e.target.value })} placeholder="106.8456" className="bg-slate-900 border-slate-700 font-mono" /></EF>
                 <EF label="MikroTik IP"><Input data-testid="edit-ip" value={editForm.mikrotik_ip} onChange={(e) => setEditForm({ ...editForm, mikrotik_ip: e.target.value })} placeholder="public IP" className="bg-slate-900 border-slate-700 font-mono" /></EF>
                 <EF label="Gateway IP"><Input value={editForm.gateway_ip} onChange={(e) => setEditForm({ ...editForm, gateway_ip: e.target.value })} className="bg-slate-900 border-slate-700 font-mono" /></EF>
                 <EF label="Access Method">
@@ -205,10 +250,12 @@ export default function Pops() {
           )}
           <DialogFooter className="gap-2">
             <Button variant="ghost" onClick={() => setEditForm(null)}>Cancel</Button>
-            <Button variant="outline" data-testid="test-connection-btn" onClick={testConn} disabled={testing} className="border-slate-600 bg-transparent hover:bg-slate-800">
-              {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save & Test Connection"}
-            </Button>
-            <Button data-testid="pop-edit-save" onClick={saveEdit} className="bg-blue-600 hover:bg-blue-500">Save</Button>
+            {!editForm?.isNew && (
+              <Button variant="outline" data-testid="test-connection-btn" onClick={testConn} disabled={testing} className="border-slate-600 bg-transparent hover:bg-slate-800">
+                {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save & Test Connection"}
+              </Button>
+            )}
+            <Button data-testid="pop-edit-save" onClick={saveEdit} className="bg-blue-600 hover:bg-blue-500">{editForm?.isNew ? "Create POP" : "Save"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

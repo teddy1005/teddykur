@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { MapPin, Cable, MousePointer2, X, Pencil, Save } from "lucide-react";
+import { MapPin, Cable, MousePointer2, X, Pencil, Save, Move } from "lucide-react";
 
 const TILES = {
   cartodb_dark: {
@@ -94,9 +94,12 @@ export default function MapView() {
   const [editRoute, setEditRoute] = useState([]);
 
   const tile = useMemo(() => {
-    if (!ms) return TILES.cartodb_dark;
-    if (ms.provider === "google") return TILES.google;
-    return TILES[ms.osm_tile] || TILES.cartodb_dark;
+    if (!ms) return TILES.osm_standard;
+    if (ms.provider === "google") {
+      const lyr = { roadmap: "m", satellite: "s", hybrid: "y", terrain: "p" }[ms.google_style || "satellite"] || "s";
+      return { url: `https://{s}.google.com/vt/lyrs=${lyr}&x={x}&y={y}&z={z}`, sub: ["mt0", "mt1", "mt2", "mt3"], attr: "© Google" };
+    }
+    return TILES[ms.osm_tile] || TILES.osm_standard;
   }, [ms]);
 
   const pops = useMemo(() => topo?.pops || [], [topo]);
@@ -203,6 +206,7 @@ export default function MapView() {
             <ModeBtn active={mode === "addpop"} onClick={() => setMode("addpop")} icon={MapPin} label="Add POP" testid="map-mode-addpop" />
             <ModeBtn active={mode === "addlink"} onClick={() => { setMode("addlink"); setLinkFrom(null); setWaypoints([]); }} icon={Cable} label="Draw Link" testid="map-mode-addlink" />
             <ModeBtn active={mode === "editlink"} onClick={() => { setMode("editlink"); setEditLink(null); setEditRoute([]); }} icon={Pencil} label="Edit Link" testid="map-mode-editlink" />
+            <ModeBtn active={mode === "movepop"} onClick={() => { setMode("movepop"); setLinkFrom(null); setWaypoints([]); setEditLink(null); setEditRoute([]); }} icon={Move} label="Move POP" testid="map-mode-movepop" />
           </div>
         )}
       </div>
@@ -213,6 +217,7 @@ export default function MapView() {
             {mode === "addpop" && "Click anywhere on the map to place a new POP."}
             {mode === "addlink" && (linkFrom ? `Drawing from ${linkFrom.code} — click waypoints, then click destination POP. Waypoints: ${waypoints.length}` : "Click the source POP marker to begin.")}
             {mode === "editlink" && (editLink ? `Editing ${editLink.name} — drag points, click map to add a bend, double-click a point to remove.` : "Click a cable line to start editing its route.")}
+            {mode === "movepop" && "Drag any POP marker to reposition it — changes save automatically."}
           </span>
           <div className="flex items-center gap-2">
             {mode === "editlink" && editLink && (
@@ -265,7 +270,7 @@ export default function MapView() {
               key={p.id}
               position={[p.latitude, p.longitude]}
               icon={makeIcon(p.status, p.code)}
-              draggable={canEdit && mode === "view"}
+              draggable={canEdit && mode === "movepop"}
               eventHandlers={{ click: () => onMarkerClick(p), dragend: (e) => onDragEnd(p, e) }}
             >
               <Popup>

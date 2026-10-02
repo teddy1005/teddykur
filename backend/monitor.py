@@ -75,7 +75,8 @@ def _rest_session(pop, timeout):
     port = pop.get("api_port") or 443
     user = pop.get("username") or ""
     pwd = decrypt_secret(pop.get("password_enc", ""))
-    base = f"https://{ip}:{port}/rest"
+    scheme = "http" if str(port) == "80" else "https"
+    base = f"{scheme}://{ip}:{port}/rest"
     auth = HTTPBasicAuth(user, pwd)
     return base, auth, requests, timeout
 
@@ -216,7 +217,8 @@ async def _collect(pop, settings):
 
     # Real path (best-effort). On any failure -> monitoring error / unreachable.
     target = pop.get("gateway_ip") or pop.get("mikrotik_ip")
-    ping = await _real_ping(target, settings["timeout"], settings["retry"])
+    to = max(settings.get("timeout", 2), 5)
+    ping = await _real_ping(target, to, settings["retry"])
     result = {
         "router_up": ping["reachable"],
         "reachable": ping["reachable"],
@@ -235,9 +237,9 @@ async def _collect(pop, settings):
         "tx_total": pop.get("tx_total", 0),
         "monitoring_error": not ping["reachable"],
     }
-    if pop.get("access_method") == "rest" and ping["reachable"]:
+    if pop.get("access_method") == "rest":
         try:
-            data = await asyncio.to_thread(_collect_rest, pop, settings["timeout"])
+            data = await asyncio.to_thread(_collect_rest, pop, to)
             res = data["resource"]
             result["cpu"] = int(float(res.get("cpu-load", 0)))
             total = int(res.get("total-memory", 0)) // (1024 * 1024)
@@ -279,13 +281,21 @@ async def _collect(pop, settings):
                 result["interfaces"] = ifaces
                 result["rx_total"] = rx_t
                 result["tx_total"] = tx_t
+            result["router_up"] = True
+            result["reachable"] = True
+            if not ping["reachable"]:
+                result["packet_loss"] = 0
             result["monitoring_error"] = False
         except Exception as e:
             logger.warning("REST collect failed for %s: %s", pop.get("name"), e)
             result["monitoring_error"] = True
-    elif pop.get("access_method") == "snmp" and ping["reachable"]:
+    elif pop.get("access_method") == "snmp":
         try:
-            await asyncio.to_thread(_snmp_sysdescr, pop, settings["timeout"])
+            await asyncio.to_thread(_snmp_sysdescr, pop, to)
+            result["router_up"] = True
+            result["reachable"] = True
+            if not ping["reachable"]:
+                result["packet_loss"] = 0
             result["monitoring_error"] = False
         except Exception as e:
             logger.warning("SNMP collect failed for %s: %s", pop.get("name"), e)

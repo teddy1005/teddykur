@@ -23,6 +23,7 @@ export default function Settings() {
 
   const [provider, setProvider] = useState(null);
   const [osmTile, setOsmTile] = useState(null);
+  const [gstyle, setGstyle] = useState(null);
   const [newUser, setNewUser] = useState(null);
   const [nf, setNf] = useState(null);
   const [tn, setTn] = useState(false);
@@ -54,10 +55,11 @@ export default function Settings() {
 
   const prov = provider ?? ms?.provider;
   const tile = osmTile ?? ms?.osm_tile;
+  const gstyleVal = gstyle ?? ms?.google_style ?? "satellite";
 
   const saveMap = async () => {
     try {
-      await api.put("/map-settings", { provider: prov, osm_tile: tile });
+      await api.put("/map-settings", { provider: prov, osm_tile: tile, google_style: gstyleVal });
       toast.success("Map provider updated — topology data unchanged");
       qc.invalidateQueries({ queryKey: ["map-settings"] });
     } catch (e) {
@@ -120,6 +122,20 @@ export default function Settings() {
                   <SelectContent className="bg-slate-900 border-slate-700 text-slate-100">
                     <SelectItem value="cartodb_dark">CARTO Dark Matter</SelectItem>
                     <SelectItem value="osm_standard">OSM Standard</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {prov === "google" && (
+              <div>
+                <Label className="text-[10px] uppercase tracking-widest text-slate-500">Google Map Type</Label>
+                <Select value={gstyleVal} onValueChange={setGstyle} disabled={!isAdmin}>
+                  <SelectTrigger data-testid="google-style-select" className="bg-slate-900 border-slate-700 mt-1 font-mono"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-700 text-slate-100">
+                    <SelectItem value="satellite">Satellite</SelectItem>
+                    <SelectItem value="hybrid">Hybrid (Satellite + Labels)</SelectItem>
+                    <SelectItem value="roadmap">Roadmap</SelectItem>
+                    <SelectItem value="terrain">Terrain</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -25,6 +25,7 @@ DEFAULT_MAP_SETTINGS = {
     "_id": "global",
     "provider": "osm",
     "osm_tile": "osm_standard",
+    "google_style": "satellite",
     "center_lat": -6.2088,
     "center_lng": 106.8456,
     "zoom": 12,
