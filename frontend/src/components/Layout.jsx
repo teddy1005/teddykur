@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -10,6 +11,8 @@ import {
   Settings as SettingsIcon,
   LogOut,
   Radio,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLive } from "@/context/LiveContext";
@@ -30,11 +33,17 @@ export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const { connected } = useLive();
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex bg-[#020617] text-slate-100">
+      {open && <div className="fixed inset-0 bg-black/60 z-30 lg:hidden" onClick={() => setOpen(false)} />}
       {/* Sidebar */}
-      <aside className="w-56 shrink-0 border-r border-slate-800 bg-[#0b1120] flex flex-col sticky top-0 h-screen">
+      <aside className={cn(
+        "w-60 shrink-0 border-r border-slate-800 bg-[#0b1120] flex flex-col h-screen z-40 transition-transform duration-200",
+        "fixed lg:sticky top-0 lg:translate-x-0",
+        open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
         <div className="h-14 flex items-center gap-2 px-4 border-b border-slate-800">
           <div className="h-7 w-7 rounded-sm bg-blue-600 flex items-center justify-center">
             <Radio className="h-4 w-4 text-white" />
@@ -50,6 +59,7 @@ export default function Layout({ children }) {
               key={n.to}
               to={n.to}
               end={n.end}
+              onClick={() => setOpen(false)}
               data-testid={`nav-${n.label.toLowerCase()}`}
               className={({ isActive }) =>
                 cn(
@@ -90,9 +100,12 @@ export default function Layout({ children }) {
 
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-14 shrink-0 border-b border-slate-800 bg-slate-950/95 backdrop-blur flex items-center justify-between px-6 sticky top-0 z-20">
-          <div className="text-xs font-mono text-slate-500">
-            POP Network Monitoring &amp; Topology
+        <header className="h-14 shrink-0 border-b border-slate-800 bg-slate-950/95 backdrop-blur flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            <button className="lg:hidden text-slate-400 hover:text-white" onClick={() => setOpen(true)} data-testid="sidebar-toggle"><Menu className="h-5 w-5" /></button>
+            <div className="text-xs font-mono text-slate-500 hidden sm:block">
+              POP Network Monitoring &amp; Topology
+            </div>
           </div>
           <div className="flex items-center gap-2 text-xs font-mono" data-testid="live-indicator">
             <span className={cn("relative flex h-2 w-2")}>

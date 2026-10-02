@@ -16,6 +16,7 @@ from db import db, get_settings
 from topology import compute_topology
 from ws import manager
 from security import decrypt_secret
+from notifications import notify_down
 
 logger = logging.getLogger(__name__)
 
@@ -53,19 +54,70 @@ async def _real_ping(ip, timeout, retry):
         return {"reachable": False, "latency": None, "loss": 100}
 
 
-def _collect_rest(pop, timeout):
-    """RouterOS v7 REST API collector (runs in threadpool)."""
+import re
+
+
+def parse_uptime(s):
+    if not s:
+        return 0
+    units = {"w": 604800, "d": 86400, "h": 3600, "m": 60, "s": 1}
+    total = 0
+    for num, u in re.findall(r"(\d+)([wdhms])", str(s)):
+        total += int(num) * units[u]
+    return total
+
+
+def _rest_session(pop, timeout):
     import requests
     from requests.auth import HTTPBasicAuth
 
     ip = pop.get("mikrotik_ip")
+    port = pop.get("api_port") or 443
     user = pop.get("username") or ""
     pwd = decrypt_secret(pop.get("password_enc", ""))
-    base = f"https://{ip}/rest"
+    base = f"https://{ip}:{port}/rest"
     auth = HTTPBasicAuth(user, pwd)
-    res = requests.get(f"{base}/system/resource", auth=auth, timeout=timeout, verify=False)
-    res.raise_for_status()
-    return res.json()
+    return base, auth, requests, timeout
+
+
+def _collect_rest(pop, timeout):
+    """RouterOS v7 REST collector (threadpool). Returns resource+identity+interfaces."""
+    base, auth, requests, t = _rest_session(pop, timeout)
+
+    def g(path):
+        return requests.get(f"{base}{path}", auth=auth, timeout=t, verify=False)
+
+    out = {}
+    r = g("/system/resource")
+    r.raise_for_status()
+    out["resource"] = r.json()
+    for key, path in (("identity", "/system/identity"), ("routerboard", "/system/routerboard"), ("interfaces", "/interface")):
+        try:
+            resp = g(path)
+            out[key] = resp.json() if resp.status_code == 200 else {}
+        except Exception:
+            out[key] = [] if key == "interfaces" else {}
+    return out
+
+
+def _snmp_sysdescr(pop, timeout):
+    """Best-effort SNMP sysDescr GET. Raises on failure / missing lib."""
+    from pysnmp.hlapi import (
+        SnmpEngine, CommunityData, UdpTransportTarget, ContextData, ObjectType, ObjectIdentity, getCmd,
+    )
+
+    community = decrypt_secret(pop.get("snmp_community_enc", "")) or "public"
+    ip = pop.get("mikrotik_ip")
+    port = pop.get("api_port") or 161
+    it = getCmd(
+        SnmpEngine(), CommunityData(community, mpModel=1),
+        UdpTransportTarget((ip, int(port)), timeout=timeout, retries=1),
+        ContextData(), ObjectType(ObjectIdentity("1.3.6.1.2.1.1.1.0")),
+    )
+    errInd, errStat, errIdx, varBinds = next(it)
+    if errInd or errStat:
+        raise RuntimeError(str(errInd or errStat))
+    return str(varBinds[0][1])
 
 
 # ---------------------------------------------------------------------------
@@ -186,15 +238,57 @@ async def _collect(pop, settings):
     if pop.get("access_method") == "rest" and ping["reachable"]:
         try:
             data = await asyncio.to_thread(_collect_rest, pop, settings["timeout"])
-            result["cpu"] = int(float(data.get("cpu-load", 0)))
-            total = int(data.get("total-memory", 0)) // (1024 * 1024)
-            free = int(data.get("free-memory", 0)) // (1024 * 1024)
+            res = data["resource"]
+            result["cpu"] = int(float(res.get("cpu-load", 0)))
+            total = int(res.get("total-memory", 0)) // (1024 * 1024)
+            free = int(res.get("free-memory", 0)) // (1024 * 1024)
             result["ram_total"] = total
             result["ram_free"] = free
             result["ram_used"] = total - free
             result["ram_pct"] = int((total - free) / total * 100) if total else 0
+            result["uptime_seconds"] = parse_uptime(res.get("uptime"))
+            result["routeros_version"] = res.get("version", "")
+            result["model"] = res.get("board-name", "")
+            ident = data.get("identity") or {}
+            if ident.get("name"):
+                result["router_identity"] = ident["name"]
+            rb = data.get("routerboard") or {}
+            if rb.get("serial-number"):
+                result["serial"] = rb["serial-number"]
+            ifaces, rx_t, tx_t = [], 0, 0
+            for it in data.get("interfaces", []) or []:
+                rx = int(it.get("rx-byte", 0) or 0)
+                tx = int(it.get("tx-byte", 0) or 0)
+                rx_t += rx
+                tx_t += tx
+                running = str(it.get("running")).lower() == "true"
+                disabled = str(it.get("disabled")).lower() == "true"
+                ifaces.append({
+                    "name": it.get("name"),
+                    "status": "down" if (disabled or not running) else "up",
+                    "rx_bytes": rx, "tx_bytes": tx,
+                    "rx_packets": int(it.get("rx-packet", 0) or 0),
+                    "tx_packets": int(it.get("tx-packet", 0) or 0),
+                    "rx_errors": int(it.get("rx-error", 0) or 0),
+                    "tx_errors": int(it.get("tx-error", 0) or 0),
+                    "rx_drops": int(it.get("rx-drop", 0) or 0),
+                    "tx_drops": int(it.get("tx-drop", 0) or 0),
+                    "speed": it.get("speed") or "",
+                })
+            if ifaces:
+                result["interfaces"] = ifaces
+                result["rx_total"] = rx_t
+                result["tx_total"] = tx_t
+            result["monitoring_error"] = False
         except Exception as e:
             logger.warning("REST collect failed for %s: %s", pop.get("name"), e)
+            result["monitoring_error"] = True
+    elif pop.get("access_method") == "snmp" and ping["reachable"]:
+        try:
+            await asyncio.to_thread(_snmp_sysdescr, pop, settings["timeout"])
+            result["monitoring_error"] = False
+        except Exception as e:
+            logger.warning("SNMP collect failed for %s: %s", pop.get("name"), e)
             result["monitoring_error"] = True
     return result
 
@@ -331,6 +425,8 @@ async def run_cycle():
                 f"POP {pop['name']} {prev} -> {st['status']} ({st['reason']})",
                 st["reason"],
             )
+            if st["status"] == "DOWN":
+                await notify_down("POP", pop["name"], st["reason"])
 
     # Persist link state + transitions.
     name_by_id = {p["id"]: p["name"] for p in pops}
@@ -349,6 +445,8 @@ async def run_cycle():
                 f"{prev} -> {ls['status']} ({ls['reason']})",
                 ls["reason"],
             )
+            if ls["status"] == "DOWN":
+                await notify_down("LINK", l.get("name", l["id"]), ls["reason"])
 
     # Alternative path informational events (deduped per link while active).
     for alt in result["alt_paths"]:

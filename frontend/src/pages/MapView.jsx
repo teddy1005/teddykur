@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { MapPin, Cable, MousePointer2, X } from "lucide-react";
+import { MapPin, Cable, MousePointer2, X, Pencil, Save } from "lucide-react";
 
 const TILES = {
   cartodb_dark: {
@@ -51,6 +51,32 @@ function ClickHandler({ onClick }) {
   return null;
 }
 
+const vertexIcon = L.divIcon({
+  className: "",
+  html: `<div style="width:12px;height:12px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 5px #3b82f6"></div>`,
+  iconSize: [12, 12],
+  iconAnchor: [6, 6],
+});
+
+function segDist(p, a, b) {
+  const dy = b[0] - a[0], dx = b[1] - a[1];
+  if (dx === 0 && dy === 0) return Math.hypot(p[1] - a[1], p[0] - a[0]);
+  let t = ((p[1] - a[1]) * dx + (p[0] - a[0]) * dy) / (dx * dx + dy * dy);
+  t = Math.max(0, Math.min(1, t));
+  const cy = a[0] + t * dy, cx = a[1] + t * dx;
+  return Math.hypot(p[1] - cx, p[0] - cy);
+}
+function insertNearest(route, pt) {
+  let best = 0, bestD = Infinity;
+  for (let i = 0; i < route.length - 1; i++) {
+    const d = segDist(pt, route[i], route[i + 1]);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  const r = route.map((x) => [x[0], x[1]]);
+  r.splice(best + 1, 0, pt);
+  return r;
+}
+
 export default function MapView() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -59,11 +85,13 @@ export default function MapView() {
   const { data: ms } = useQuery({ queryKey: ["map-settings"], queryFn: () => api.get("/map-settings").then((r) => r.data) });
   const { data: topo } = useQuery({ queryKey: ["topology"], queryFn: () => api.get("/topology").then((r) => r.data), refetchInterval: 10000 });
 
-  const [mode, setMode] = useState("view"); // view | addpop | addlink
+  const [mode, setMode] = useState("view"); // view | addpop | addlink | editlink
   const [popForm, setPopForm] = useState(null);
   const [linkFrom, setLinkFrom] = useState(null);
   const [waypoints, setWaypoints] = useState([]);
   const [linkForm, setLinkForm] = useState(null);
+  const [editLink, setEditLink] = useState(null);
+  const [editRoute, setEditRoute] = useState([]);
 
   const tile = useMemo(() => {
     if (!ms) return TILES.cartodb_dark;
@@ -71,8 +99,8 @@ export default function MapView() {
     return TILES[ms.osm_tile] || TILES.cartodb_dark;
   }, [ms]);
 
-  const pops = topo?.pops || [];
-  const links = topo?.links || [];
+  const pops = useMemo(() => topo?.pops || [], [topo]);
+  const links = useMemo(() => topo?.links || [], [topo]);
   const popById = useMemo(() => Object.fromEntries(pops.map((p) => [p.id, p])), [pops]);
 
   const onMapClick = (latlng) => {
@@ -80,6 +108,8 @@ export default function MapView() {
       setPopForm({ name: "", code: "", address: "", mikrotik_ip: "", gateway_ip: "", interfaces: "ether1,ether2", is_core: false, description: "", latitude: latlng.lat.toFixed(6), longitude: latlng.lng.toFixed(6) });
     } else if (mode === "addlink" && linkFrom) {
       setWaypoints((w) => [...w, [latlng.lat, latlng.lng]]);
+    } else if (mode === "editlink" && editLink) {
+      setEditRoute((r) => insertNearest(r, [latlng.lat, latlng.lng]));
     }
   };
 
@@ -130,7 +160,22 @@ export default function MapView() {
     setLinkForm(null);
     setLinkFrom(null);
     setWaypoints([]);
+    setEditLink(null);
+    setEditRoute([]);
     setMode("view");
+  };
+
+  const saveRoute = async () => {
+    try {
+      await api.put(`/links/${editLink.id}`, { route: editRoute });
+      toast.success("Cable route updated");
+      setEditLink(null);
+      setEditRoute([]);
+      setMode("view");
+      qc.invalidateQueries({ queryKey: ["topology"] });
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to update route");
+    }
   };
 
   const onDragEnd = async (p, e) => {
@@ -157,6 +202,7 @@ export default function MapView() {
             <ModeBtn active={mode === "view"} onClick={() => { setMode("view"); cancelLink(); }} icon={MousePointer2} label="View" testid="map-mode-view" />
             <ModeBtn active={mode === "addpop"} onClick={() => setMode("addpop")} icon={MapPin} label="Add POP" testid="map-mode-addpop" />
             <ModeBtn active={mode === "addlink"} onClick={() => { setMode("addlink"); setLinkFrom(null); setWaypoints([]); }} icon={Cable} label="Draw Link" testid="map-mode-addlink" />
+            <ModeBtn active={mode === "editlink"} onClick={() => { setMode("editlink"); setEditLink(null); setEditRoute([]); }} icon={Pencil} label="Edit Link" testid="map-mode-editlink" />
           </div>
         )}
       </div>
@@ -166,8 +212,14 @@ export default function MapView() {
           <span>
             {mode === "addpop" && "Click anywhere on the map to place a new POP."}
             {mode === "addlink" && (linkFrom ? `Drawing from ${linkFrom.code} — click waypoints, then click destination POP. Waypoints: ${waypoints.length}` : "Click the source POP marker to begin.")}
+            {mode === "editlink" && (editLink ? `Editing ${editLink.name} — drag points, click map to add a bend, double-click a point to remove.` : "Click a cable line to start editing its route.")}
           </span>
-          <button onClick={cancelLink} className="text-slate-400 hover:text-white"><X className="h-4 w-4" /></button>
+          <div className="flex items-center gap-2">
+            {mode === "editlink" && editLink && (
+              <Button size="sm" data-testid="save-route-btn" onClick={saveRoute} className="h-7 bg-emerald-600 hover:bg-emerald-500 text-xs"><Save className="h-3.5 w-3.5 mr-1" /> Save Route</Button>
+            )}
+            <button onClick={cancelLink} className="text-slate-400 hover:text-white"><X className="h-4 w-4" /></button>
+          </div>
         </div>
       )}
 
@@ -179,7 +231,7 @@ export default function MapView() {
           {links.map((l) => {
             const s = getStatus(l.status);
             return (
-              <Polyline key={l.id} positions={l.route} pathOptions={{ color: s.hex, weight: 3, dashArray: l.status === "DOWN" ? "6 6" : undefined, opacity: 0.9 }}>
+              <Polyline key={l.id} positions={l.route} eventHandlers={{ click: () => { if (mode === "editlink" && !editLink) { setEditLink(l); setEditRoute(l.route.map((p) => [p[0], p[1]])); toast.info(`Editing ${l.name}`); } } }} pathOptions={{ color: s.hex, weight: 3, dashArray: l.status === "DOWN" ? "6 6" : undefined, opacity: editLink && editLink.id === l.id ? 0.25 : 0.9 }}>
                 <Tooltip sticky>
                   <div className="font-mono text-xs">
                     <div className="font-bold">{l.name}</div>
@@ -193,6 +245,19 @@ export default function MapView() {
 
           {linkFrom && waypoints.length > 0 && (
             <Polyline positions={[[linkFrom.latitude, linkFrom.longitude], ...waypoints]} pathOptions={{ color: "#3b82f6", weight: 2, dashArray: "4 6" }} />
+          )}
+
+          {editLink && (
+            <>
+              <Polyline positions={editRoute} pathOptions={{ color: "#3b82f6", weight: 4, opacity: 0.95 }} />
+              {editRoute.map((pt, idx) => (
+                <Marker key={idx} position={pt} icon={vertexIcon} draggable
+                  eventHandlers={{
+                    dragend: (e) => { const { lat, lng } = e.target.getLatLng(); setEditRoute((r) => r.map((q, i) => (i === idx ? [lat, lng] : q))); },
+                    dblclick: () => setEditRoute((r) => (r.length > 2 ? r.filter((_, i) => i !== idx) : r)),
+                  }} />
+              ))}
+            </>
           )}
 
           {pops.map((p) => (

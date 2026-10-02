@@ -60,7 +60,7 @@ export default function Links() {
         {canEdit && <Button data-testid="new-link-btn" onClick={openNew} className="bg-blue-600 hover:bg-blue-500 rounded-sm"><Plus className="h-4 w-4 mr-1" /> New Link</Button>}
       </div>
       <div className="p-6">
-        <div className="rounded-sm border border-slate-800 overflow-hidden">
+        <div className="rounded-sm border border-slate-800 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="border-slate-800 hover:bg-transparent">

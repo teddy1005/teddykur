@@ -1,4 +1,5 @@
 import uuid
+import asyncio
 from datetime import datetime, timezone, timedelta
 from math import radians, sin, cos, asin, sqrt
 
@@ -6,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, WebSoc
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 
-from db import db, get_settings, get_map_settings, DEFAULT_SETTINGS, DEFAULT_MAP_SETTINGS
+from db import db, get_settings, get_map_settings, get_notification_settings, DEFAULT_SETTINGS, DEFAULT_MAP_SETTINGS
 from security import (
     hash_password,
     verify_password,
@@ -17,7 +18,8 @@ from security import (
     encrypt_secret,
 )
 from ws import manager
-from monitor import run_cycle
+from monitor import run_cycle, _collect_rest, _real_ping, _snmp_sysdescr, parse_uptime
+import notifications
 
 router = APIRouter(prefix="/api")
 
@@ -218,6 +220,8 @@ async def update_pop(pop_id: str, body: dict, user=Depends(require_role("admin",
         update["password_enc"] = encrypt_secret(body["password"])
     if body.get("snmp_community"):
         update["snmp_community_enc"] = encrypt_secret(body["snmp_community"])
+    if "simulation_enabled" in body:
+        update["simulation.enabled"] = bool(body["simulation_enabled"])
     if "interfaces" in body and isinstance(body["interfaces"], list):
         existing = {i["name"]: i for i in p.get("interfaces", [])}
         update["interfaces"] = [
@@ -462,6 +466,68 @@ async def simulate_fault(body: FaultBody, user=Depends(require_role("admin", "op
     await db.pops.update_one({"id": body.pop_id}, {"$set": {"simulation.fault": fault}})
     await run_cycle()
     return {"ok": True, "fault": fault}
+
+
+# ----------------------------- Notifications -----------------------------
+@router.get("/notification-settings")
+async def read_notification_settings(user=Depends(get_current_user)):
+    ns = await get_notification_settings()
+    return {"enabled": ns.get("enabled", False), "chat_id": ns.get("chat_id", ""),
+            "has_token": bool(ns.get("token_enc")), "trigger": ns.get("trigger", "down")}
+
+
+@router.put("/notification-settings")
+async def write_notification_settings(body: dict, user=Depends(require_role("admin"))):
+    update = {}
+    if "enabled" in body:
+        update["enabled"] = bool(body["enabled"])
+    if "chat_id" in body:
+        update["chat_id"] = str(body["chat_id"]).strip()
+    if "trigger" in body:
+        update["trigger"] = body["trigger"]
+    if body.get("token"):
+        update["token_enc"] = encrypt_secret(body["token"])
+    await db.notification_settings.update_one({"_id": "global"}, {"$set": update}, upsert=True)
+    return await read_notification_settings(user)
+
+
+@router.post("/notification-settings/test")
+async def test_notification(user=Depends(require_role("admin"))):
+    return await notifications.send_test()
+
+
+# ----------------------------- MikroTik connection test -----------------------------
+@router.post("/pops/{pop_id}/test-connection")
+async def test_connection(pop_id: str, user=Depends(require_role("admin", "operator"))):
+    p = await db.pops.find_one({"id": pop_id})
+    if not p:
+        raise HTTPException(status_code=404, detail="POP not found")
+    settings = await get_settings()
+    method = p.get("access_method", "rest")
+    target = p.get("gateway_ip") or p.get("mikrotik_ip")
+    if not target:
+        return {"ok": False, "reachable": False, "method": method, "message": "No IP configured"}
+    ping = await _real_ping(target, settings["timeout"], settings["retry"])
+    res = {"reachable": ping["reachable"], "latency": ping.get("latency"), "method": method, "ok": False}
+    if not ping["reachable"]:
+        res["message"] = "Host not reachable (ICMP). Ensure the device is public-facing and reachable."
+        return res
+    if method == "rest":
+        try:
+            data = await asyncio.to_thread(_collect_rest, p, settings["timeout"])
+            r = data["resource"]
+            res.update({"ok": True, "identity": (data.get("identity") or {}).get("name"),
+                        "version": r.get("version"), "board": r.get("board-name"),
+                        "cpu": r.get("cpu-load"), "uptime": parse_uptime(r.get("uptime"))})
+        except Exception as e:
+            res["message"] = f"REST error: {e}"
+    elif method == "snmp":
+        try:
+            desc = await asyncio.to_thread(_snmp_sysdescr, p, settings["timeout"])
+            res.update({"ok": True, "identity": desc[:120]})
+        except Exception as e:
+            res["message"] = f"SNMP error: {e}"
+    return res
 
 
 # ----------------------------- WebSocket -----------------------------

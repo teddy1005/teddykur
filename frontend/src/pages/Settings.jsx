@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Map as MapIcon, Users, Plus, Check } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Map as MapIcon, Users, Plus, Check, Bell, Send, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Settings() {
@@ -18,10 +19,38 @@ export default function Settings() {
 
   const { data: ms } = useQuery({ queryKey: ["map-settings"], queryFn: () => api.get("/map-settings").then((r) => r.data) });
   const { data: users } = useQuery({ queryKey: ["users"], queryFn: () => api.get("/auth/users").then((r) => r.data), enabled: isAdmin });
+  const { data: notif } = useQuery({ queryKey: ["notif-settings"], queryFn: () => api.get("/notification-settings").then((r) => r.data), enabled: isAdmin });
 
   const [provider, setProvider] = useState(null);
   const [osmTile, setOsmTile] = useState(null);
   const [newUser, setNewUser] = useState(null);
+  const [nf, setNf] = useState(null);
+  const [tn, setTn] = useState(false);
+  const cur = { ...(notif || {}), ...(nf || {}) };
+
+  const saveNotif = async () => {
+    try {
+      const body = { enabled: !!cur.enabled, chat_id: cur.chat_id || "" };
+      if (cur.token) body.token = cur.token;
+      await api.put("/notification-settings", body);
+      toast.success("Notification settings saved");
+      setNf(null);
+      qc.invalidateQueries({ queryKey: ["notif-settings"] });
+    } catch (e) {
+      toast.error(formatApiErrorDetail(e.response?.data?.detail));
+    }
+  };
+
+  const testNotif = async () => {
+    setTn(true);
+    try {
+      const { data } = await api.post("/notification-settings/test");
+      data.ok ? toast.success("Test message sent to Telegram") : toast.error(data.message || "Failed");
+    } catch (e) {
+      toast.error(formatApiErrorDetail(e.response?.data?.detail));
+    }
+    setTn(false);
+  };
 
   const prov = provider ?? ms?.provider;
   const tile = osmTile ?? ms?.osm_tile;
@@ -99,6 +128,25 @@ export default function Settings() {
             {isAdmin && <Button data-testid="save-map-btn" onClick={saveMap} className="bg-blue-600 hover:bg-blue-500 rounded-sm">Save Provider</Button>}
           </div>
         </div>
+
+        {/* Telegram Alerts */}
+        {isAdmin && (
+          <div className="rounded-sm border border-slate-800 bg-[#0b1120]">
+            <div className="px-4 py-2.5 border-b border-slate-800 text-xs uppercase tracking-widest font-bold text-slate-400 flex items-center gap-2"><Bell className="h-3.5 w-3.5" /> Telegram Alerts</div>
+            <div className="p-4 space-y-4">
+              <label className="flex items-center gap-2 text-sm text-slate-300"><Switch data-testid="notif-enabled" checked={!!cur.enabled} onCheckedChange={(v) => setNf({ ...(nf || {}), enabled: v })} /> Send Telegram alert when a POP or link goes <b className="text-red-400">DOWN</b></label>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div><Label className="text-[10px] uppercase tracking-widest text-slate-500">Bot Token</Label><Input data-testid="notif-token" type="password" placeholder={cur.has_token ? "•••••••• (saved)" : "from @BotFather"} value={cur.token || ""} onChange={(e) => setNf({ ...(nf || {}), token: e.target.value })} className="bg-slate-900 border-slate-700 mt-1 font-mono" /></div>
+                <div><Label className="text-[10px] uppercase tracking-widest text-slate-500">Chat ID</Label><Input data-testid="notif-chatid" value={cur.chat_id || ""} onChange={(e) => setNf({ ...(nf || {}), chat_id: e.target.value })} placeholder="e.g. -1001234567890" className="bg-slate-900 border-slate-700 mt-1 font-mono" /></div>
+              </div>
+              <div className="text-[11px] text-slate-500 font-mono">Create a bot via @BotFather for the token. Message the bot (or add it to a group) to obtain the Chat ID.</div>
+              <div className="flex gap-2">
+                <Button data-testid="notif-save-btn" onClick={saveNotif} className="bg-blue-600 hover:bg-blue-500 rounded-sm">Save</Button>
+                <Button data-testid="notif-test-btn" variant="outline" disabled={tn} onClick={testNotif} className="border-slate-600 bg-transparent hover:bg-slate-800">{tn ? <Loader2 className="h-4 w-4 animate-spin" /> : (<><Send className="h-4 w-4 mr-1" /> Send Test</>)}</Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Users */}
         {isAdmin && (

@@ -31,6 +31,14 @@ DEFAULT_MAP_SETTINGS = {
     "google_api_key_set": False,
 }
 
+DEFAULT_NOTIFICATION_SETTINGS = {
+    "_id": "global",
+    "enabled": False,
+    "chat_id": "",
+    "token_enc": "",
+    "trigger": "down",
+}
+
 
 async def get_settings():
     doc = await db.monitoring_settings.find_one({"_id": "global"})
@@ -46,4 +54,12 @@ async def get_map_settings():
         await db.map_settings.insert_one(dict(DEFAULT_MAP_SETTINGS))
         doc = dict(DEFAULT_MAP_SETTINGS)
     doc.pop("google_api_key", None)
+    return doc
+
+
+async def get_notification_settings():
+    doc = await db.notification_settings.find_one({"_id": "global"})
+    if not doc:
+        await db.notification_settings.insert_one(dict(DEFAULT_NOTIFICATION_SETTINGS))
+        doc = dict(DEFAULT_NOTIFICATION_SETTINGS)
     return doc
