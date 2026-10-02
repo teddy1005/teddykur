@@ -1,0 +1,146 @@
+{
+  "theme": {
+    "mode": "dark",
+    "archetype": "ARCHETYPE 4: SWISS & HIGH-CONTRAST (Authority, Clarity, Truth) mixed with ARCHETYPE 2: THE PERFORMANCE PRO (Command-center focus)",
+    "description": "A high-density, tactical Dark Mode interface built for Network Operations Centers. Focuses on rapid status recognition, stark contrasts, and zero-distraction data consumption. The visual language exposes the technical grid."
+  },
+  "typography": {
+    "headings": {
+      "family": "Chivo",
+      "weight": "font-black",
+      "tracking": "tracking-tight",
+      "instruction": "Used for page titles, major KPI numbers, and critical alerts. DO NOT use Inter for headings."
+    },
+    "body": {
+      "family": "Inter",
+      "weight": "font-normal",
+      "instruction": "Clean, geometric sans for general UI text."
+    },
+    "monospace": {
+      "family": "IBM Plex Mono",
+      "weight": "font-medium",
+      "instruction": "MANDATORY for all IPs, Latency (ms), Packet Loss (%), CPU/RAM metrics, and event log timestamps to ensure tabular alignment."
+    },
+    "hierarchy": {
+      "h1": "text-3xl sm:text-4xl",
+      "h2": "text-xl sm:text-2xl",
+      "h3": "text-lg sm:text-xl",
+      "body": "text-sm",
+      "labels": "text-xs uppercase tracking-[0.2em] font-bold text-slate-400"
+    }
+  },
+  "colors": {
+    "background": {
+      "default": "#020617",
+      "surface": "#0f172a",
+      "surface_hover": "#1e293b",
+      "border": "#334155"
+    },
+    "text": {
+      "primary": "#f8fafc",
+      "secondary": "#94a3b8",
+      "muted": "#64748b"
+    },
+    "status": {
+      "up": {
+        "hex": "#10b981",
+        "tailwind": "emerald-500",
+        "bg": "bg-emerald-500/10",
+        "border": "border-emerald-500/30"
+      },
+      "down": {
+        "hex": "#ef4444",
+        "tailwind": "red-500",
+        "bg": "bg-red-500/10",
+        "border": "border-red-500/50"
+      },
+      "degraded": {
+        "hex": "#f59e0b",
+        "tailwind": "amber-500",
+        "bg": "bg-amber-500/10",
+        "border": "border-amber-500/30"
+      }
+    },
+    "primary": {
+      "default": "#3b82f6",
+      "tailwind": "blue-500"
+    }
+  },
+  "visual_enhancers": {
+    "surface_strategy": "Grid Borders (The 'Technical' Look). Use border-collapse style layouts for dashboard sections. Elements should have border-r and border-b with border-slate-800 to expose the skeleton of the UI.",
+    "tactical_glow": "Critical 'DOWN' alerts should use a subtle inset red shadow or Tracing Beam effect to draw immediate operator attention.",
+    "glassmorphism": "Avoid soft glassmorphism for data elements. Use solid flat surfaces (bg-slate-900) with crisp 1px borders to prevent visual refraction of dense metrics. Sticky headers can use backdrop-blur with a hard bottom border.",
+    "status_indicators": "All status indicators (UP/DOWN) must include a pulsing dot (ping animation) next to the label to indicate real-time polling."
+  },
+  "grids_and_layouts": {
+    "strategy": "MODE B: High Density Grid. Designed for maximum data correlation and scanability.",
+    "spacing": "Dense but optical. Use gap-4 or gap-6. Containers must have internal padding (p-4 or p-6).",
+    "bento_dashboard": "Summary metrics span 1 col, main topology/map spans 2 or 3 cols, and real-time event feed spans a tall 1-col narrow list on the right.",
+    "alignment": "Strict left-alignment for all tabular data, metrics, and labels to aid fast reading. Metric values and their labels must align perfectly."
+  },
+  "component_strategy": {
+    "ui_library": "shadcn/ui primitives. Customize heavily: remove rounded-xl defaults, use rounded-sm or rounded-none for a sharper, technical NOC feel.",
+    "buttons": "Sharp edges, solid colors for primary actions, subtle ghost variants for secondary. High contrast hover states.",
+    "tables": "Dense rows. Monospace font for data cells. Use explicit hover states (hover:bg-slate-800) to help eye tracking across wide rows.",
+    "forms": "Use Shadcn Form, Input, Select. Never use native inputs.",
+    "toasts": "Sonner (bottom-right positioning for NOC event alerts, categorized by severity)."
+  },
+  "advanced_libraries": {
+    "topology_graph": {
+      "package": "@xyflow/react (React Flow)",
+      "usage": "Use custom nodes to display POP health (CPU, RAM, Status). Use animated edges (dashed lines moving) to represent traffic flow. Edge colors must map to Link Status (Green/Red/Amber)."
+    },
+    "geographic_map": {
+      "package": "react-leaflet, leaflet",
+      "usage": "Use CartoDB Dark Matter or Stadia Alidade Smooth Dark tiles for the map base to match the dark theme. Render POPs as markers and Links as Polylines (cable paths)."
+    },
+    "charts": {
+      "package": "recharts",
+      "usage": "Use for CPU/RAM and Traffic history. Minimal grid lines, solid stroke lines with gradient fills beneath."
+    }
+  },
+  "motion": {
+    "micro_interactions": "Hover states must instantly increase border contrast and slightly lift the element (-translate-y-[1px]).",
+    "status_pulses": "Use a subtle scale/opacity loop animation for 'Live' indicators (absolute w-2 h-2 rounded-full animate-ping).",
+    "transitions": "Use specific transitions (e.g., transition-colors duration-150) rather than 'all'. Do not apply transitions to layout dimensions to prevent jank."
+  },
+  "media_and_icons": {
+    "icons": {
+      "library": "@phosphor-icons/react",
+      "style": "duotone or regular weight. Excellent for technical interfaces.",
+      "install_command": "yarn add @phosphor-icons/react"
+    },
+    "images": {
+      "login_background": {
+        "url": "https://images.unsplash.com/photo-1586449480537-3a22cf98b04c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwxfHxkYXJrJTIwZmliZXIlMjBvcHRpYyUyMG5ldHdvcmslMjBub2RlcyUyMG1hcHxlbnwwfHx8fDE3OTA5NTAxNDd8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Dark fiber optic network abstraction used for the authentication screen background to establish technical authority."
+      }
+    }
+  },
+  "accessibility": {
+    "testing": "All interactive elements (buttons, links, map markers, form inputs) MUST have data-testid attributes (e.g., data-testid='pop-status-card', data-testid='link-management-tab').",
+    "contrast": "Ensure all text against dark surfaces meets minimum 4.5:1 ratio. Never use pure #000000 for backgrounds. Never use grey-on-grey for critical metrics.",
+    "motion": "Respect prefers-reduced-motion for the topology animated edges and status pings."
+  },
+  "instructions_to_main_agent": [
+    "You are building a high-performance NOC Dashboard. The interface must look technical, dense, and authoritative.",
+    "Do NOT use soft, fluffy borders (rounded-2xl) or generic Vercel-like SaaS aesthetics. Use sharp edges (rounded-sm), tight spacing, and high contrast.",
+    "For the Map Component, wrap it in a client-side only approach or use appropriate dynamic imports if using Next.js/React to avoid SSR issues with Leaflet.",
+    "For the Topology Graph (@xyflow/react), create custom React components for the nodes to display real-time CPU/RAM/Status inside the node itself.",
+    "Ensure the sidebar navigation is compact. Use Phosphor icons.",
+    "Do NOT center-align the main app layout. It is a full-width, 100vh grid layout.",
+    "Whenever displaying IPs, ping latency, or packet loss, ALWAYS use the IBM Plex Mono font family.",
+    "Do NOT use transparent backgrounds for headers or sticky menus. Use bg-slate-950/95 with a solid bottom border."
+  ],
+  "universal_guidelines": [
+    "You tend to converge toward generic, 'on distribution' outputs. Make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy and crisp 1px borders.",
+    "You MUST NOT apply universal transition (e.g., transition: all). Add transitions for specific properties.",
+    "You MUST NOT center align the app container. Do not add .App { text-align: center; }.",
+    "Always use modern button styles, sharp with interaction animations & color relevant to the app style.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 for icons.",
+    "Use sonner for toasts, located in /app/src/components/ui/sonner.tsx."
+  ]
+}

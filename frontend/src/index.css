@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --background: 222 47% 5%;
+    --foreground: 210 40% 98%;
+    --card: 222 44% 8%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 44% 8%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 28% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 215 28% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 215 28% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 27% 20%;
+    --input: 215 27% 20%;
+    --ring: 217 91% 60%;
+    --radius: 0.25rem;
+}
+
+* {
+    border-color: hsl(var(--border));
+}
+
+body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background-color: #020617;
+    color: #f8fafc;
+    -webkit-font-smoothing: antialiased;
+}
+
+.font-heading { font-family: 'Chivo', sans-serif; }
+.font-mono { font-family: 'IBM Plex Mono', monospace; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0f172a; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+::selection { background: #3b82f6; color: #fff; }
+
+@keyframes ping-slow {
+    0% { transform: scale(1); opacity: 0.8; }
+    75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+.live-ping { animation: ping-slow 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+    .live-ping { animation: none; }
+}
+
+/* Leaflet dark adjustments */
+.leaflet-container { background: #020617; font-family: 'Inter', sans-serif; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+    background: #0f172a; color: #f8fafc; border: 1px solid #334155; border-radius: 4px;
+}
+.leaflet-bar a { background: #0f172a; color: #f8fafc; border-color: #334155; }
+.leaflet-bar a:hover { background: #1e293b; }
+
+/* React Flow dark */
+.react-flow__attribution { background: rgba(2,6,23,0.6) !important; color: #475569 !important; }
+.react-flow__edge-text { fill: #cbd5e1; font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
