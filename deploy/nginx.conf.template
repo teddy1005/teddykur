@@ -1,0 +1,72 @@
+# ============================================================
+# Template Nginx untuk POP Network Monitoring (aaPanel)
+# ------------------------------------------------------------
+# Di aaPanel:
+#   1. Buat Website untuk domain Anda (root diarahkan ke build frontend).
+#   2. Buka: Website -> (domain) -> Config / Konfigurasi.
+#   3. Tempel 2 blok "location" di bawah KE DALAM blok server {} milik
+#      domain Anda (jangan hapus baris SSL yang dibuat aaPanel).
+#   4. Simpan -> Reload Nginx.
+#
+# Catatan:
+#   - Backend berjalan lokal di 127.0.0.1:8001 (lihat Python Project Manager).
+#   - Root situs = folder hasil `yarn build`, contoh:
+#       /www/wwwroot/popmon/frontend/build
+# ============================================================
+
+# --- (A) SPA fallback: taruh di blok server domain Anda ---
+# Pastikan "root" situs menunjuk ke .../frontend/build
+location / {
+    try_files $uri $uri/ /index.html;
+}
+
+# --- (B) WebSocket real-time: HARUS sebelum location /api ---
+location /api/ws {
+    proxy_pass http://127.0.0.1:8001;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+}
+
+# --- (C) REST API: reverse proxy ke backend ---
+location /api {
+    proxy_pass http://127.0.0.1:8001;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 120s;
+}
+
+# ============================================================
+# CONTOH server block LENGKAP (jika mau membuat manual, bukan via aaPanel).
+# aaPanel biasanya sudah membuat bagian listen/ssl otomatis.
+# ============================================================
+#
+# server {
+#     listen 80;
+#     server_name monitoring.domainanda.com;
+#     return 301 https://$host$request_uri;
+# }
+#
+# server {
+#     listen 443 ssl http2;
+#     server_name monitoring.domainanda.com;
+#
+#     ssl_certificate     /www/server/panel/vhost/cert/monitoring/fullchain.pem;
+#     ssl_certificate_key /www/server/panel/vhost/cert/monitoring/privkey.pem;
+#
+#     root /www/wwwroot/popmon/frontend/build;
+#     index index.html;
+#
+#     location /api/ws { ... (blok B) ... }
+#     location /api    { ... (blok C) ... }
+#     location /       { try_files $uri $uri/ /index.html; }
+# }

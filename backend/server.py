@@ -45,8 +45,11 @@ async def startup():
     await seed_admin()
     await seed_demo()
     await run_cycle()
-    start_engine()
-    logger.info("Monitoring engine started.")
+    if os.environ.get("RUN_ENGINE", "true").lower() != "false":
+        start_engine()
+        logger.info("Monitoring engine started.")
+    else:
+        logger.info("RUN_ENGINE=false -> monitoring engine NOT started in this worker.")
 
 
 @app.on_event("shutdown")
