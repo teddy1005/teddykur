@@ -120,8 +120,8 @@ export default function Settings() {
                 <Select value={tile} onValueChange={setOsmTile} disabled={!isAdmin}>
                   <SelectTrigger data-testid="osm-tile-select" className="bg-slate-900 border-slate-700 mt-1 font-mono"><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-slate-900 border-slate-700 text-slate-100">
-                    <SelectItem value="cartodb_dark">CARTO Dark Matter</SelectItem>
                     <SelectItem value="osm_standard">OSM Standard</SelectItem>
+                    <SelectItem value="esri_dark">Dark (Esri)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -16,10 +16,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { MapPin, Cable, MousePointer2, X, Pencil, Save, Move } from "lucide-react";
 
 const TILES = {
-  cartodb_dark: {
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    sub: ["a", "b", "c", "d"],
-    attr: "© OpenStreetMap, © CARTO",
+  esri_dark: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    sub: [],
+    attr: "© Esri",
   },
   osm_standard: {
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
