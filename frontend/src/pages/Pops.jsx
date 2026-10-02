@@ -43,7 +43,7 @@ export default function Pops() {
     setTestResult(null);
     setEditForm({
       isNew: true, name: "", code: "", latitude: "", longitude: "", address: "",
-      mikrotik_ip: "", gateway_ip: "", access_method: "rest", api_port: 443, username: "",
+      mikrotik_ip: "", gateway_ip: "", access_method: "api", api_port: 8728, username: "",
       password: "", snmp_community: "", simulation_enabled: true, is_core: false, interfaces: "ether1,ether2",
     });
   };
@@ -210,16 +210,17 @@ export default function Pops() {
                 <EF label="MikroTik IP"><Input data-testid="edit-ip" value={editForm.mikrotik_ip} onChange={(e) => setEditForm({ ...editForm, mikrotik_ip: e.target.value })} placeholder="public IP" className="bg-slate-900 border-slate-700 font-mono" /></EF>
                 <EF label="Gateway IP"><Input value={editForm.gateway_ip} onChange={(e) => setEditForm({ ...editForm, gateway_ip: e.target.value })} className="bg-slate-900 border-slate-700 font-mono" /></EF>
                 <EF label="Access Method">
-                  <Select value={editForm.access_method} onValueChange={(v) => setEditForm({ ...editForm, access_method: v, api_port: v === "snmp" ? 161 : 443 })}>
+                  <Select value={editForm.access_method} onValueChange={(v) => setEditForm({ ...editForm, access_method: v, api_port: v === "snmp" ? 161 : v === "api" ? 8728 : 443 })}>
                     <SelectTrigger data-testid="edit-method" className="bg-slate-900 border-slate-700"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-slate-900 border-slate-700 text-slate-100">
+                      <SelectItem value="api">RouterOS API (v6 &amp; v7, no SSL)</SelectItem>
                       <SelectItem value="rest">RouterOS REST API (v7+)</SelectItem>
                       <SelectItem value="snmp">SNMP</SelectItem>
                     </SelectContent>
                   </Select>
                 </EF>
                 <EF label="Port"><Input value={editForm.api_port} onChange={(e) => setEditForm({ ...editForm, api_port: e.target.value })} className="bg-slate-900 border-slate-700 font-mono" /></EF>
-                {editForm.access_method === "rest" ? (<>
+                {editForm.access_method !== "snmp" ? (<>
                   <EF label="Username"><Input value={editForm.username} onChange={(e) => setEditForm({ ...editForm, username: e.target.value })} className="bg-slate-900 border-slate-700 font-mono" /></EF>
                   <EF label="Password"><Input type="password" value={editForm.password} onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} placeholder="leave blank to keep" className="bg-slate-900 border-slate-700 font-mono" /></EF>
                 </>) : (

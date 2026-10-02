@@ -18,7 +18,7 @@ from security import (
     encrypt_secret,
 )
 from ws import manager
-from monitor import run_cycle, _collect_rest, _real_ping, _snmp_sysdescr, parse_uptime
+from monitor import run_cycle, _collect_rest, _collect_api, _real_ping, _snmp_sysdescr, parse_uptime
 import notifications
 
 router = APIRouter(prefix="/api")
@@ -510,18 +510,19 @@ async def test_connection(pop_id: str, user=Depends(require_role("admin", "opera
     to = max(settings["timeout"], 6)
     ping = await _real_ping(target, to, settings["retry"])
     res = {"reachable": ping["reachable"], "latency": ping.get("latency"), "method": method, "ok": False}
-    if method == "rest":
+    if method in ("rest", "api"):
         try:
-            data = await asyncio.to_thread(_collect_rest, p, to)
-            r = data["resource"]
+            collector = _collect_rest if method == "rest" else _collect_api
+            data = await asyncio.to_thread(collector, p, to)
+            r = data.get("resource") or {}
             res.update({"ok": True, "reachable": True, "identity": (data.get("identity") or {}).get("name"),
                         "version": r.get("version"), "board": r.get("board-name"),
                         "cpu": r.get("cpu-load"), "uptime": parse_uptime(r.get("uptime"))})
         except Exception as e:
-            res["message"] = f"REST error: {e}"
+            res["message"] = f"{method.upper()} error: {e}"
     elif method == "snmp":
         try:
-            desc = await asyncio.to_thread(_snmp_sysdescr, p, to)
+            desc = await _snmp_sysdescr(p, to)
             res.update({"ok": True, "reachable": True, "identity": desc[:120]})
         except Exception as e:
             res["message"] = f"SNMP error: {e}"

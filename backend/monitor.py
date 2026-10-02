@@ -101,23 +101,107 @@ def _collect_rest(pop, timeout):
     return out
 
 
-def _snmp_sysdescr(pop, timeout):
-    """Best-effort SNMP sysDescr GET. Raises on failure / missing lib."""
-    from pysnmp.hlapi import (
-        SnmpEngine, CommunityData, UdpTransportTarget, ContextData, ObjectType, ObjectIdentity, getCmd,
+def _collect_api(pop, timeout):
+    """RouterOS binary API via librouteros (works on v6 & v7, plain port 8728, no SSL).
+    Returns the same normalized shape as _collect_rest."""
+    from librouteros import connect
+
+    ip = pop.get("mikrotik_ip")
+    port = int(pop.get("api_port") or 8728)
+    user = pop.get("username") or ""
+    pwd = decrypt_secret(pop.get("password_enc", ""))
+    api = connect(host=ip, username=user, password=pwd, port=port, timeout=timeout)
+    try:
+        resource = tuple(api("/system/resource/print"))
+        out = {"resource": resource[0] if resource else {}}
+        for key, cmd in (("identity", "/system/identity/print"), ("routerboard", "/system/routerboard/print")):
+            try:
+                rows = tuple(api(cmd))
+                out[key] = rows[0] if rows else {}
+            except Exception:
+                out[key] = {}
+        try:
+            out["interfaces"] = list(api("/interface/print"))
+        except Exception:
+            out["interfaces"] = []
+        return out
+    finally:
+        try:
+            api.close()
+        except Exception:
+            pass
+
+
+def _fill_from_device(result, data, ping):
+    """Map a normalized device payload (REST or binary API) into the metrics result."""
+    res = data.get("resource") or {}
+    result["cpu"] = int(float(res.get("cpu-load", 0) or 0))
+    total = int(res.get("total-memory", 0) or 0) // (1024 * 1024)
+    free = int(res.get("free-memory", 0) or 0) // (1024 * 1024)
+    result["ram_total"] = total
+    result["ram_free"] = free
+    result["ram_used"] = total - free
+    result["ram_pct"] = int((total - free) / total * 100) if total else 0
+    result["uptime_seconds"] = parse_uptime(res.get("uptime"))
+    if res.get("version"):
+        result["routeros_version"] = res.get("version")
+    if res.get("board-name"):
+        result["model"] = res.get("board-name")
+    ident = data.get("identity") or {}
+    if ident.get("name"):
+        result["router_identity"] = ident["name"]
+    rb = data.get("routerboard") or {}
+    if rb.get("serial-number"):
+        result["serial"] = rb["serial-number"]
+    ifaces, rx_t, tx_t = [], 0, 0
+    for it in data.get("interfaces", []) or []:
+        rx = int(it.get("rx-byte", 0) or 0)
+        tx = int(it.get("tx-byte", 0) or 0)
+        rx_t += rx
+        tx_t += tx
+        running = str(it.get("running")).lower() == "true"
+        disabled = str(it.get("disabled")).lower() == "true"
+        ifaces.append({
+            "name": it.get("name"),
+            "status": "down" if (disabled or not running) else "up",
+            "rx_bytes": rx, "tx_bytes": tx,
+            "rx_packets": int(it.get("rx-packet", 0) or 0),
+            "tx_packets": int(it.get("tx-packet", 0) or 0),
+            "rx_errors": int(it.get("rx-error", 0) or 0),
+            "tx_errors": int(it.get("tx-error", 0) or 0),
+            "rx_drops": int(it.get("rx-drop", 0) or 0),
+            "tx_drops": int(it.get("tx-drop", 0) or 0),
+            "speed": it.get("speed") or "",
+        })
+    if ifaces:
+        result["interfaces"] = ifaces
+        result["rx_total"] = rx_t
+        result["tx_total"] = tx_t
+    result["router_up"] = True
+    result["reachable"] = True
+    if not ping["reachable"]:
+        result["packet_loss"] = 0
+    result["monitoring_error"] = False
+
+
+async def _snmp_sysdescr(pop, timeout):
+    """SNMP sysDescr GET via pysnmp 7 async v3arch API. Raises on failure."""
+    from pysnmp.hlapi.v3arch.asyncio import (
+        SnmpEngine, CommunityData, UdpTransportTarget, ContextData, ObjectType, ObjectIdentity, get_cmd,
     )
 
     community = decrypt_secret(pop.get("snmp_community_enc", "")) or "public"
     ip = pop.get("mikrotik_ip")
-    port = pop.get("api_port") or 161
-    it = getCmd(
-        SnmpEngine(), CommunityData(community, mpModel=1),
-        UdpTransportTarget((ip, int(port)), timeout=timeout, retries=1),
-        ContextData(), ObjectType(ObjectIdentity("1.3.6.1.2.1.1.1.0")),
+    port = int(pop.get("api_port") or 161)
+    target = await UdpTransportTarget.create((ip, port), timeout=timeout, retries=1)
+    errInd, errStat, errIdx, varBinds = await get_cmd(
+        SnmpEngine(), CommunityData(community, mpModel=1), target, ContextData(),
+        ObjectType(ObjectIdentity("1.3.6.1.2.1.1.1.0")),
     )
-    errInd, errStat, errIdx, varBinds = next(it)
-    if errInd or errStat:
-        raise RuntimeError(str(errInd or errStat))
+    if errInd:
+        raise RuntimeError(str(errInd))
+    if errStat:
+        raise RuntimeError(errStat.prettyPrint())
     return str(varBinds[0][1])
 
 
@@ -237,61 +321,18 @@ async def _collect(pop, settings):
         "tx_total": pop.get("tx_total", 0),
         "monitoring_error": not ping["reachable"],
     }
-    if pop.get("access_method") == "rest":
+    method = pop.get("access_method")
+    if method in ("rest", "api"):
         try:
-            data = await asyncio.to_thread(_collect_rest, pop, to)
-            res = data["resource"]
-            result["cpu"] = int(float(res.get("cpu-load", 0)))
-            total = int(res.get("total-memory", 0)) // (1024 * 1024)
-            free = int(res.get("free-memory", 0)) // (1024 * 1024)
-            result["ram_total"] = total
-            result["ram_free"] = free
-            result["ram_used"] = total - free
-            result["ram_pct"] = int((total - free) / total * 100) if total else 0
-            result["uptime_seconds"] = parse_uptime(res.get("uptime"))
-            result["routeros_version"] = res.get("version", "")
-            result["model"] = res.get("board-name", "")
-            ident = data.get("identity") or {}
-            if ident.get("name"):
-                result["router_identity"] = ident["name"]
-            rb = data.get("routerboard") or {}
-            if rb.get("serial-number"):
-                result["serial"] = rb["serial-number"]
-            ifaces, rx_t, tx_t = [], 0, 0
-            for it in data.get("interfaces", []) or []:
-                rx = int(it.get("rx-byte", 0) or 0)
-                tx = int(it.get("tx-byte", 0) or 0)
-                rx_t += rx
-                tx_t += tx
-                running = str(it.get("running")).lower() == "true"
-                disabled = str(it.get("disabled")).lower() == "true"
-                ifaces.append({
-                    "name": it.get("name"),
-                    "status": "down" if (disabled or not running) else "up",
-                    "rx_bytes": rx, "tx_bytes": tx,
-                    "rx_packets": int(it.get("rx-packet", 0) or 0),
-                    "tx_packets": int(it.get("tx-packet", 0) or 0),
-                    "rx_errors": int(it.get("rx-error", 0) or 0),
-                    "tx_errors": int(it.get("tx-error", 0) or 0),
-                    "rx_drops": int(it.get("rx-drop", 0) or 0),
-                    "tx_drops": int(it.get("tx-drop", 0) or 0),
-                    "speed": it.get("speed") or "",
-                })
-            if ifaces:
-                result["interfaces"] = ifaces
-                result["rx_total"] = rx_t
-                result["tx_total"] = tx_t
-            result["router_up"] = True
-            result["reachable"] = True
-            if not ping["reachable"]:
-                result["packet_loss"] = 0
-            result["monitoring_error"] = False
+            collector = _collect_rest if method == "rest" else _collect_api
+            data = await asyncio.to_thread(collector, pop, to)
+            _fill_from_device(result, data, ping)
         except Exception as e:
-            logger.warning("REST collect failed for %s: %s", pop.get("name"), e)
+            logger.warning("%s collect failed for %s: %s", method, pop.get("name"), e)
             result["monitoring_error"] = True
-    elif pop.get("access_method") == "snmp":
+    elif method == "snmp":
         try:
-            await asyncio.to_thread(_snmp_sysdescr, pop, to)
+            await _snmp_sysdescr(pop, to)
             result["router_up"] = True
             result["reachable"] = True
             if not ping["reachable"]:
