@@ -1,0 +1,32 @@
+{
+  "summary": "Iteration 2 testing: all 4 NEW features (Telegram notification-settings, POP /test-connection, POP edit live config, Map route editing) + 2 regressions (topology engine simulate-fault, malformed Bearer -> 401) PASS. Backend: 19/19 pytest at /app/backend/tests/test_popmon_iter2.py (+ iter1 test file preserved). Frontend: admin login works, Settings page shows Telegram card with all testids (notif-enabled, notif-token, notif-chatid, notif-save-btn, notif-test-btn), POP page action menu pop-actions-POP-A opens dialog with pop-edit-POP-A -> edit-sim/edit-method/test-connection-btn/pop-edit-save; Test Connection button returned test-result with 'FAILED Host not reachable (ICMP)' (as expected on private IPs), Map toolbar has map-mode-editlink and clicking a cable line reveals save-route-btn with draggable vertices, mobile viewport (390x844) hides sidebar and shows sidebar-toggle hamburger that opens drawer with full nav. State mutations restored (pop-a sim re-enabled with ether1/ether2/ether3, pop-a interfaces_down cleared, link-ab route kept as 3-point line per instructions, notifications disabled with fake token kept token_enc for has_token verification but ns.enabled=false).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_popmon_iter2.py",
+    "/app/backend/tests/test_popmon_backend.py",
+    "/app/test_reports/pytest/iter2_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "api.py update_pop: when the client sends `interfaces: ['ether1','ether2']` for a POP that originally had 3 interfaces (ether3) the extra interface is silently removed; test exposed that this breaks topology (LINK-AD becomes UNKNOWN because POP-A no longer has ether3). This is the DESIGN of the endpoint (full replace), but there's no server-side guard preventing clients from accidentally orphaning links. Suggestion: on PUT /pops/{id}, if removing an interface used by any link, either refuse (400) or auto-mark link UNKNOWN with a reason. Documented behavior would also help.",
+    "notifications.send_test / send_message: when enabled=false it returns {ok:false, message:'Notifications disabled'} which the Settings UI will show as a failure toast — that's accurate but confusing after user clicks 'Send Test'. Consider sending a test attempt regardless of enabled flag, OR hint 'enable alerts first'.",
+    "POST /notification-settings/test uses the stored (encrypted) token via send_message; because a fake token was PUT in tests the real Telegram API will return 404 (bot not found). The current code catches this via HTTP code path and returns {ok:false, message:'Telegram HTTP 404: ...'}, which is correct non-500 behavior.",
+    "api.py update_pop: `simulation_enabled` body key maps to Mongo dot-path `simulation.enabled` via $set — works fine. Interfaces list replace preserves existing counters by name map — good.",
+    "monitor.py _collect: in LIVE mode when pop has no mikrotik_ip the first branch (`sim.enabled or not mikrotik_ip`) actually keeps it in simulation (good). But operator may expect LIVE mode without an IP to go DOWN; current code hides this. Minor.",
+    "(From iter1 and still present) Login brute-force lockout stores locked_until=now, so 429 never triggers. Not blocking iter2 scope."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_popmon_iter2.py (NEW, 19 tests)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin teddykurnia10@gmail.com / PopMonitor#2026; operator operator@popmon.io / Popmon#2026; viewer viewer@popmon.io / Popmon#2026",
+  "seed_data_creation": "No new seed; used existing demo. State restored after tests: pop-a {simulation.enabled:true, interfaces:[ether1,ether2,ether3], fault cleared}, notification-settings {enabled:false, token_enc kept (fake), chat_id='-1001234567890'}; link-ab route left as the 3-point polyline per instructions (engine re-derives status).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend tests at /app/backend/tests/test_popmon_iter2.py — run from /app with: pytest backend/tests/test_popmon_iter2.py -v. Known caveat: TestPopEdit replaces pop-a interfaces and the test file explicitly restores ether1/ether2/ether3; if you add further tests that touch pop-a interfaces, restore the same 3 ifaces or LINK-AD will become UNKNOWN and the alt-path regression will fail. Notification-settings has a leftover fake token (has_token=true, enabled=false) — safe. Test Connection returns {ok:false, reachable:false, message:'Host not reachable (ICMP)...'} on all private-IP demo POPs — this is the correct graceful path. Map polyline click in Playwright requires using element.bounding_box() + page.mouse.click() rather than locator.click(force=True), because leaflet-interactive paths need real mouse events to fire the Leaflet click handler."
+}

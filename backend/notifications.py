@@ -20,10 +20,7 @@ def _send_sync(token, chat_id, text):
     return r.status_code, r.text
 
 
-async def send_message(text):
-    ns = await get_notification_settings()
-    if not ns.get("enabled"):
-        return {"ok": False, "message": "Notifications disabled"}
+async def _deliver(ns, text):
     token = decrypt_secret(ns.get("token_enc", ""))
     chat_id = ns.get("chat_id")
     if not token or not chat_id:
@@ -38,6 +35,13 @@ async def send_message(text):
         return {"ok": False, "message": str(e)}
 
 
+async def send_message(text):
+    ns = await get_notification_settings()
+    if not ns.get("enabled"):
+        return {"ok": False, "message": "Notifications disabled"}
+    return await _deliver(ns, text)
+
+
 async def notify_down(kind, name, reason):
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     text = (
@@ -50,5 +54,6 @@ async def notify_down(kind, name, reason):
 
 
 async def send_test():
+    ns = await get_notification_settings()
     ts = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
-    return await send_message(f"✅ <b>POP Monitor</b> test notification\nTelegram alerts are working. <i>{ts}</i>")
+    return await _deliver(ns, f"✅ <b>POP Monitor</b> test notification\nTelegram alerts are working. <i>{ts}</i>")

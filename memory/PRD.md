@@ -29,8 +29,15 @@ users, pops (config + derived current state + interfaces[] + simulation), links 
 - Backend tested 100% (24 pytest cases); frontend 95% (all flows pass).
 
 ## Backlog
-- **P1**: WebSocket upgrade through preview ingress (currently falls back to polling). Real MikroTik on-prem connectivity (REST/SNMP paths implemented, need live device). Per-interface traffic history charts.
-- **P2**: SNMP collector full parsing; Google Maps API key config UI; alert notifications (email/Telegram); CSV/export; map polyline editing of existing links.
+- **P1**: Real MikroTik on-prem rollout (REST/SNMP live polling + Test Connection now implemented — needs public-facing device). WebSocket upgrade through preview ingress (currently polling fallback).
+- **P2**: Email (Resend) alert channel; alert escalation/ack; map polyline editing undo; CSV export.
+
+## Iteration 2 (2026-06)
+- Telegram DOWN alerts (token encrypted, Settings UI + Send Test), notify on POP/link transition to DOWN.
+- Live MikroTik config per POP (REST v7 + SNMP), simulation toggle, **Test Connection** (ICMP + REST identity/version/CPU or SNMP sysDescr). Real REST collector now parses cpu/ram/uptime/version/interfaces.
+- Map **cable route editing**: edit-link mode, draggable vertices, click-to-add bend, double-click to remove, recomputes distance.
+- Modern **responsive** shell: mobile sidebar drawer + hamburger, scrollable tables.
+- Tested: backend 100% (iter1 24 + iter2 19 pytest), frontend 100%.
 
 ## Key Endpoints
 Auth: /api/auth/{login,logout,me,register,users}. POP: /api/pops [CRUD], /{id}/{interfaces,metrics,latency}. Links: /api/links [CRUD]. /api/topology, /api/dashboard, /api/alerts (+resolve), /api/settings, /api/map-settings, /api/monitoring/{check,simulate-fault}, WS /api/ws.
